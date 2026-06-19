@@ -1,0 +1,5 @@
+{
+  "name": "AI Scout - Personal Research Agent",
+  "description": "Ein automatisierter Agent, der Deep Research zu einer Liste von KI-Experten durchführt, Neuigkeiten aggregiert und einen kuratierten Newsletter erstellt.",
+  "requestFramePermissions": []
+}
