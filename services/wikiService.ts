@@ -14,14 +14,16 @@ export interface WikiProfile {
   imageUrl?: string;
 }
 
-interface WikiSummary {
-  type: string;
+interface WikiPage {
   title: string;
+  index?: number;
+  missing?: boolean;
+  invalid?: boolean;
+  pageprops?: { disambiguation?: string };
   description?: string;
   extract?: string;
+  fullurl?: string;
   thumbnail?: { source: string; width: number; height: number };
-  originalimage?: { source: string; width: number; height: number };
-  content_urls?: { desktop?: { page?: string } };
 }
 
 // Begriffe in der Wikidata-Kurzbeschreibung, die auf eine Person aus dem Tech-/Forschungsumfeld hindeuten.
@@ -35,62 +37,58 @@ const PERSON_KEYWORDS = [
 
 export const cleanName = (name: string) => name.replace(/\(.*?\)/g, '').trim();
 
-const fetchSummary = async (lang: WikiLang, title: string): Promise<WikiSummary | null> => {
-  const res = await fetch(
-    `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title.replace(/ /g, '_'))}`
-  );
-  if (!res.ok) return null;
-  const data: WikiSummary = await res.json();
-  if (data.type === 'disambiguation') return null;
-  return data;
-};
+// Bild-URLs nie selbst zusammenbauen: Wikimedia blockiert seit 2026 Thumbnails in Nicht-Standardgrößen.
+// pithumbsize=960 ist eine der Standardstufen; die API liefert dafür eine gültige URL zurück.
+const QUERY_PARAMS = [
+  'action=query', 'format=json', 'formatversion=2', 'origin=*', 'redirects=1',
+  'prop=pageimages|extracts|info|pageprops|description',
+  'piprop=thumbnail', 'pithumbsize=960',
+  'exintro=1', 'explaintext=1', 'exsentences=6',
+  'inprop=url', 'ppprop=disambiguation'
+].join('&');
 
-const searchTitle = async (lang: WikiLang, name: string): Promise<string | null> => {
-  const res = await fetch(
-    `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srlimit=3&format=json&origin=*&srsearch=${encodeURIComponent(name)}`
-  );
-  if (!res.ok) return null;
+const queryPages = async (lang: WikiLang, params: string): Promise<WikiPage[]> => {
+  const res = await fetch(`https://${lang}.wikipedia.org/w/api.php?${QUERY_PARAMS}&${params}`);
+  if (!res.ok) throw new Error(`Wikipedia (${lang}) antwortet mit Status ${res.status}`);
   const data = await res.json();
-  const lastName = name.split(' ').pop()!.toLowerCase();
-  const hit = (data?.query?.search || []).find((r: { title: string }) => r.title.toLowerCase().includes(lastName));
-  return hit?.title || null;
+  const pages: WikiPage[] = data?.query?.pages || [];
+  return pages
+    .filter(p => !p.missing && !p.invalid && p.pageprops?.disambiguation === undefined)
+    .sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
 };
 
-const looksLikeExpert = (summary: WikiSummary) => {
-  const text = `${summary.description || ''} ${summary.extract || ''}`.toLowerCase();
+const fetchPage = async (lang: WikiLang, title: string) =>
+  (await queryPages(lang, `titles=${encodeURIComponent(title)}`))[0] || null;
+
+const looksLikeExpert = (page: WikiPage) => {
+  const text = `${page.description || ''} ${page.extract || ''}`.toLowerCase();
   return PERSON_KEYWORDS.some(k => text.includes(k));
 };
 
-// Große Originalbilder (teils > 5 MB) vermeiden: ab 1200px die Wikimedia-Thumbnail-Variante nehmen.
-const pickImage = (summary: WikiSummary): string | undefined => {
-  const original = summary.originalimage;
-  if (original && original.width <= 1200) return original.source;
-  if (summary.thumbnail) return summary.thumbnail.source.replace(/\/\d+px-/, '/800px-');
-  return original?.source;
+const searchPage = async (lang: WikiLang, name: string) => {
+  const pages = await queryPages(lang, `generator=search&gsrlimit=3&gsrsearch=${encodeURIComponent(name)}`);
+  const lastName = name.split(' ').pop()!.toLowerCase();
+  return pages.find(p => p.title.toLowerCase().includes(lastName) && looksLikeExpert(p)) || null;
 };
 
-const toProfile = (lang: WikiLang, s: WikiSummary): WikiProfile => ({
-  title: s.title,
+const toProfile = (lang: WikiLang, p: WikiPage): WikiProfile => ({
+  title: p.title,
   lang,
-  url: s.content_urls?.desktop?.page || `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(s.title)}`,
-  extract: s.extract || '',
-  description: s.description,
-  imageUrl: pickImage(s)
+  url: p.fullurl || `https://${lang}.wikipedia.org/wiki/${encodeURIComponent(p.title.replace(/ /g, '_'))}`,
+  extract: p.extract || '',
+  description: p.description,
+  imageUrl: p.thumbnail?.source
 });
 
 const findInLanguage = async (lang: WikiLang, name: string): Promise<WikiProfile | null> => {
-  const direct = await fetchSummary(lang, name);
-  if (direct) return toProfile(lang, direct);
-
-  const title = await searchTitle(lang, name);
-  if (!title) return null;
-  const found = await fetchSummary(lang, title);
-  return found && looksLikeExpert(found) ? toProfile(lang, found) : null;
+  const page = (await fetchPage(lang, name)) || (await searchPage(lang, name));
+  return page ? toProfile(lang, page) : null;
 };
 
 /**
  * Sucht den Wikipedia-Artikel zu einem Experten.
  * Deutsch hat Vorrang (Biografie-Text), fehlt dort ein Foto, wird es aus dem englischen Artikel ergänzt.
+ * Netzwerkfehler werden weitergereicht, damit die Oberfläche sie anzeigen kann.
  */
 export const lookupExpert = async (expert: Expert): Promise<WikiProfile | null> => {
   if (expert.wikiTitle === '-') return null;
@@ -98,8 +96,8 @@ export const lookupExpert = async (expert: Expert): Promise<WikiProfile | null> 
   if (expert.wikiTitle) {
     const match = expert.wikiTitle.match(/^(de|en):(.+)$/);
     const lang: WikiLang = (match?.[1] as WikiLang) || 'de';
-    const summary = await fetchSummary(lang, match ? match[2] : expert.wikiTitle);
-    return summary ? toProfile(lang, summary) : null;
+    const page = await fetchPage(lang, match ? match[2] : expert.wikiTitle);
+    return page ? toProfile(lang, page) : null;
   }
 
   const name = cleanName(expert.name);
@@ -141,9 +139,11 @@ export const refreshFromWikipedia = async (
   experts: Expert[],
   onResult: (id: string, patch: Partial<Expert>) => void,
   concurrency = 4
-): Promise<{ found: number; missing: string[] }> => {
+): Promise<{ found: number; missing: string[]; failed: string[]; error?: string }> => {
   const queue = [...experts];
   const missing: string[] = [];
+  const failed: string[] = [];
+  let error: string | undefined;
   let found = 0;
 
   const worker = async () => {
@@ -152,8 +152,12 @@ export const refreshFromWikipedia = async (
       let profile: WikiProfile | null = null;
       try {
         profile = await lookupExpert(expert);
-      } catch (e) {
+      } catch (e: any) {
+        // Netzwerk-/Serverfehler: vorhandene Daten behalten, beim nächsten Öffnen erneut versuchen
         console.warn('Wikipedia-Abfrage fehlgeschlagen für', expert.name, e);
+        failed.push(expert.name);
+        error = e?.message || String(e);
+        continue;
       }
 
       const keepManualImage = expert.imageSource === 'manual' && expert.imageUrl;
@@ -187,7 +191,7 @@ export const refreshFromWikipedia = async (
   };
 
   await Promise.all(Array.from({ length: Math.min(concurrency, experts.length) }, worker));
-  return { found, missing };
+  return { found, missing, failed, error };
 };
 
 /**

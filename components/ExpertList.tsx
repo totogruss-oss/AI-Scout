@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Expert, Report, Highlight } from '../types';
-import { Trash2, Plus, CheckCircle, Circle, RefreshCw, Sparkles, Search, Users } from 'lucide-react';
+import { Trash2, Plus, CheckCircle, Circle, RefreshCw, Sparkles, Search, Users, AlertTriangle } from 'lucide-react';
 import { analyzeExpertsBatch } from '../services/geminiService';
 import { refreshFromWikipedia, matchesExpert, cleanName } from '../services/wikiService';
 import { ExpertAvatar } from './ExpertAvatar';
@@ -24,7 +24,7 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
   const [newExpertRole, setNewExpertRole] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const autoLoaded = useRef(false);
@@ -35,17 +35,30 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
   const runWikiRefresh = async (list: Expert[], silent = false) => {
     if (list.length === 0) return;
     if (!silent) setBusy(`Lade Fotos & Biografien (${list.length})…`);
-    const { found, missing } = await refreshFromWikipedia(list, (id, patch) =>
+    const { found, missing, failed, error } = await refreshFromWikipedia(list, (id, patch) =>
       setExperts(prev => prev.map(e => (e.id === id ? { ...e, ...patch } : e)))
     );
-    if (!silent) {
-      setBusy(null);
-      setNotice(
-        `${found} von ${list.length} Profilen aus Wikipedia geladen.` +
-        (missing.length ? ` Ohne Artikel: ${missing.join(', ')} – über „Bearbeiten“ lässt sich ein Artikel oder Foto festlegen.` : '')
-      );
+    setBusy(null);
+    if (failed.length) {
+      setNotice({
+        error: true,
+        text: `Wikipedia war für ${failed.length} von ${list.length} Profilen nicht erreichbar (${error}). ` +
+          'Bitte Internetverbindung prüfen; Werbe- oder Tracking-Blocker können Wikipedia-Abfragen ebenfalls blockieren.'
+      });
+    } else if (!silent) {
+      setNotice({
+        text: `${found} von ${list.length} Profilen aus Wikipedia geladen.` +
+          (missing.length ? ` Ohne Artikel: ${missing.join(', ')} – über „Bearbeiten“ lässt sich ein Artikel oder Foto festlegen.` : '')
+      });
     }
   };
+
+  // Erfolgsmeldungen verschwinden von selbst, Fehler bleiben bis zur Bestätigung stehen
+  useEffect(() => {
+    if (!notice || notice.error) return;
+    const timer = setTimeout(() => setNotice(null), 6000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   // Beim ersten Öffnen automatisch alle Profile ohne Wikipedia-Stand nachladen
   useEffect(() => {
@@ -78,12 +91,15 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
           };
         }));
       }
-      setNotice(`KI-Einschätzung für ${list.length} ${list.length === 1 ? 'Profil' : 'Profile'} aktualisiert.`);
+      setNotice({ text: `KI-Einschätzung für ${list.length} ${list.length === 1 ? 'Profil' : 'Profile'} aktualisiert.` });
     } catch (error: any) {
       const quota = error?.message?.includes('429') || error?.message?.toLowerCase().includes('quota');
-      setNotice(quota
-        ? 'Das Limit für KI-Anfragen ist erreicht. Bitte später erneut versuchen.'
-        : `Fehler bei der KI-Einschätzung: ${error?.message || 'unbekannt'}`);
+      setNotice({
+        error: true,
+        text: quota
+          ? 'Das Limit für KI-Anfragen ist erreicht. Bitte später erneut versuchen.'
+          : `Fehler bei der KI-Einschätzung: ${error?.message || 'unbekannt'}`
+      });
     } finally {
       setBusy(null);
     }
@@ -135,10 +151,14 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
 
   const selectedExpert = experts.find(e => e.id === selectedId);
 
+  // Als fixierte Meldung unten rechts, damit sie auch bei gescrollter Profilseite sichtbar ist
   const statusBar = (busy || notice) && (
-    <div className="flex items-start gap-3 bg-zinc-50 border border-zinc-200 px-4 py-3 mb-8 text-sm text-zinc-700">
-      {busy ? <RefreshCw className="w-4 h-4 animate-spin mt-0.5 shrink-0" /> : <Sparkles className="w-4 h-4 mt-0.5 shrink-0" />}
-      <span className="flex-1">{busy || notice}</span>
+    <div
+      role="status"
+      className={`fixed bottom-4 right-4 left-4 sm:left-auto sm:max-w-md z-[150] flex items-start gap-3 border-2 px-4 py-3 text-sm shadow-xl bg-white ${notice?.error && !busy ? 'border-red-600 text-red-700' : 'border-zinc-900 text-zinc-700'}`}
+    >
+      {busy ? <RefreshCw className="w-4 h-4 animate-spin mt-0.5 shrink-0" /> : notice?.error ? <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" /> : <Sparkles className="w-4 h-4 mt-0.5 shrink-0" />}
+      <span className="flex-1">{busy || notice?.text}</span>
       {!busy && <button onClick={() => setNotice(null)} className="text-xs uppercase tracking-widest text-zinc-400 hover:text-zinc-900">OK</button>}
     </div>
   );

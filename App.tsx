@@ -22,6 +22,11 @@ const loadState = (): AppState => {
         // Sie werden verworfen und beim nächsten Öffnen der Expertenansicht aus Wikipedia neu geladen.
         parsed.experts = parsed.experts.map((expert: Expert) =>
             expert.imageUrl && !expert.imageSource ? { ...expert, imageUrl: undefined } : expert
+        ).map((expert: Expert) =>
+            // Selbst gebaute 800px-Thumbnails blockiert Wikimedia (nur Standardgrößen erlaubt) → neu laden
+            expert.imageSource === 'wikipedia' && expert.imageUrl?.includes('/800px-')
+              ? { ...expert, imageUrl: undefined, imageSource: undefined, wikiFetchedAt: undefined }
+              : expert
         );
     }
     if (!parsed.highlights) {

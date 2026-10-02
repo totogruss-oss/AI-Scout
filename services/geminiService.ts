@@ -161,8 +161,11 @@ Für JEDE Person:
     }
   });
 
-  const data = JSON.parse(response.text || "[]");
-  return Array.isArray(data) ? data : [];
+  // Mit Google-Suche verpackt das Modell JSON gelegentlich in ```json-Blöcke
+  const raw = (response.text || "[]").trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '');
+  const data = JSON.parse(raw);
+  if (!Array.isArray(data)) throw new Error("Unerwartetes Antwortformat von Gemini");
+  return data;
 };
 
 export const generateFastScan = async (onProgress: (msg: string) => void): Promise<FastScanResult> => {
