@@ -10,6 +10,12 @@ export interface Expert {
   relevance?: string;
   lastUpdated?: string;
   imageUrl?: string;
+  imageSource?: 'wikipedia' | 'manual' | 'social';
+  // Wikipedia-Verknüpfung: "de:Titel" / "en:Titel" erzwingt einen Artikel, "-" schaltet die Suche ab
+  wikiTitle?: string;
+  wikiUrl?: string;
+  wikiExtract?: string;
+  wikiFetchedAt?: string;
 }
 
 export type LinkStatus = 'accessible' | 'paywall' | 'warning';

@@ -18,13 +18,11 @@ const loadState = (): AppState => {
     if (!parsed.experts || parsed.experts.length === 0) {
         parsed.experts = INITIAL_EXPERTS;
     } else {
-        parsed.experts = parsed.experts.map((expert: Expert) => {
-            const initialExpert = INITIAL_EXPERTS.find(e => e.id === expert.id || e.name === expert.name);
-            if (initialExpert && initialExpert.imageUrl && !expert.imageUrl) {
-                return { ...expert, imageUrl: initialExpert.imageUrl };
-            }
-            return expert;
-        });
+        // Alte Bild-URLs ohne Herkunftsangabe stammen aus geratenen Wikimedia-Links und sind oft kaputt.
+        // Sie werden verworfen und beim nächsten Öffnen der Expertenansicht aus Wikipedia neu geladen.
+        parsed.experts = parsed.experts.map((expert: Expert) =>
+            expert.imageUrl && !expert.imageSource ? { ...expert, imageUrl: undefined } : expert
+        );
     }
     if (!parsed.highlights) {
         parsed.highlights = [];
@@ -195,7 +193,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-12">
+      <main className={`${activeTab === 'experts' ? 'max-w-6xl' : 'max-w-4xl'} mx-auto px-4 py-12`}>
         
         {/* Progress Overlay */}
         {state.isGenerating && (
@@ -332,14 +330,13 @@ export default function App() {
 
         {/* Experts Tab */}
         {activeTab === 'experts' && (
-          <div className="max-w-3xl mx-auto space-y-4">
-            <div className="flex justify-end">
-                <button onClick={handleResetExperts} className="text-xs text-slate-400 hover:text-red-600 underline">
-                    Liste auf Standard (21) zurücksetzen
-                </button>
-            </div>
-            <ExpertList experts={state.experts} setExperts={handleUpdateExperts} />
-          </div>
+          <ExpertList
+            experts={state.experts}
+            setExperts={handleUpdateExperts}
+            reports={state.reports}
+            highlights={state.highlights}
+            onReset={handleResetExperts}
+          />
         )}
 
         {/* Knowledge Base / Archive Tab */}
