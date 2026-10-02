@@ -93,12 +93,16 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
       }
       setNotice({ text: `KI-Einschätzung für ${list.length} ${list.length === 1 ? 'Profil' : 'Profile'} aktualisiert.` });
     } catch (error: any) {
-      const quota = error?.message?.includes('429') || error?.message?.toLowerCase().includes('quota');
+      const message: string = error?.message || '';
+      const quota = message.includes('429') || message.toLowerCase().includes('quota');
+      const badKey = /api[_ ]?key|API_KEY_INVALID|401|403/i.test(message);
       setNotice({
         error: true,
-        text: quota
-          ? 'Das Limit für KI-Anfragen ist erreicht. Bitte später erneut versuchen.'
-          : `Fehler bei der KI-Einschätzung: ${error?.message || 'unbekannt'}`
+        text: badKey
+          ? 'Gemini lehnt den API-Key ab. Bitte in der Datei .env.local die Zeile GEMINI_API_KEY=… mit einem gültigen Key aus aistudio.google.com/apikey prüfen und den Dev-Server neu starten.'
+          : quota
+            ? 'Das Limit für KI-Anfragen ist erreicht. Bitte später erneut versuchen.'
+            : `Fehler bei der KI-Einschätzung: ${message || 'unbekannt'}`
       });
     } finally {
       setBusy(null);
