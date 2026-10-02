@@ -60,6 +60,7 @@ export interface FastScanResult {
 }
 
 export interface AppState {
+  dataVersion?: number;
   experts: Expert[];
   reports: Report[];
   highlights: Highlight[];

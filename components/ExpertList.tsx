@@ -60,11 +60,12 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
     return () => clearTimeout(timer);
   }, [notice]);
 
-  // Beim ersten Öffnen automatisch alle Profile ohne Wikipedia-Stand nachladen
+  // Beim ersten Öffnen automatisch nachladen: Profile ohne Wikipedia-Stand und solche,
+  // für die noch kein Artikel gefunden wurde (z.B. weil ein früherer Abruf scheiterte)
   useEffect(() => {
     if (autoLoaded.current) return;
     autoLoaded.current = true;
-    runWikiRefresh(experts.filter(e => !e.wikiFetchedAt), true);
+    runWikiRefresh(experts.filter(e => !e.wikiFetchedAt || (!e.wikiUrl && e.wikiTitle !== '-')), true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

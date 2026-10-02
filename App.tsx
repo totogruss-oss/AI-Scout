@@ -10,6 +10,9 @@ import { Sparkles, CalendarClock, Play, Menu, User, Zap, Bookmark, ExternalLink,
 import { RelativeTimeBadge } from './components/RelativeTimeBadge';
 import { Sidebar } from './components/Sidebar';
 
+// Erhöhen, wenn gespeicherte Daten beim Laden einmalig migriert werden müssen
+const DATA_VERSION = 2;
+
 // Simple persistence helper
 const loadState = (): AppState => {
   const saved = localStorage.getItem('ai_scout_state_v1');
@@ -18,17 +21,17 @@ const loadState = (): AppState => {
     if (!parsed.experts || parsed.experts.length === 0) {
         parsed.experts = INITIAL_EXPERTS;
     } else {
-        // Alte Bild-URLs ohne Herkunftsangabe stammen aus geratenen Wikimedia-Links und sind oft kaputt.
-        // Sie werden verworfen und beim nächsten Öffnen der Expertenansicht aus Wikipedia neu geladen.
-        parsed.experts = parsed.experts.map((expert: Expert) =>
-            expert.imageUrl && !expert.imageSource ? { ...expert, imageUrl: undefined } : expert
-        ).map((expert: Expert) =>
-            // Selbst gebaute 800px-Thumbnails blockiert Wikimedia (nur Standardgrößen erlaubt) → neu laden
-            expert.imageSource === 'wikipedia' && expert.imageUrl?.includes('/800px-')
-              ? { ...expert, imageUrl: undefined, imageSource: undefined, wikiFetchedAt: undefined }
-              : expert
-        );
+        // Einmalige Bereinigung (Datenstand < 2): Bilder der ersten Versionen waren geraten oder in
+        // Größen gebaut, die Wikimedia blockiert. Alles außer manuell gesetzten Fotos wird neu geladen.
+        if ((parsed.dataVersion || 0) < DATA_VERSION) {
+            parsed.experts = parsed.experts.map((expert: Expert) =>
+                expert.imageSource === 'manual'
+                  ? expert
+                  : { ...expert, imageUrl: undefined, imageSource: undefined, wikiFetchedAt: undefined }
+            );
+        }
     }
+    parsed.dataVersion = DATA_VERSION;
     if (!parsed.highlights) {
         parsed.highlights = [];
     }
@@ -41,6 +44,7 @@ const loadState = (): AppState => {
     return parsed;
   }
   return {
+    dataVersion: DATA_VERSION,
     experts: INITIAL_EXPERTS,
     reports: [],
     highlights: [],

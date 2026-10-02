@@ -321,6 +321,11 @@ export const ExpertProfile: React.FC<ExpertProfileProps> = ({
             <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
               Wikipedia-Stand: {expert.wikiFetchedAt ? new Date(expert.wikiFetchedAt).toLocaleDateString('de-DE') : 'nie'}
             </div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+              Artikel: {expert.wikiUrl ? 'gefunden' : 'keiner'} · Bildquelle: {
+                { wikipedia: 'Wikipedia', manual: 'eigenes Foto', social: 'X-Profil' }[expert.imageSource || ''] || 'keine'
+              }
+            </div>
             <button onClick={() => onRefreshWiki(expert)} disabled={isRefreshing}
               className="w-full flex items-center justify-center gap-2 border border-zinc-900 px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-white disabled:opacity-50">
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} /> Foto & Biografie neu laden
