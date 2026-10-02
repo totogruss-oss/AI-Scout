@@ -106,60 +106,66 @@ const validateLink = async (url: string, sourceName: string): Promise<LinkStatus
   }
 };
 
-export const analyzeExpertProfile = async (expertName: string): Promise<{ role: string, company: string, description: string, relevance: string, imageUrl?: string }> => {
-  const ai = getClient();
-  
-  const prompt = `Recherchiere die Person '${expertName}' im Kontext von Künstlicher Intelligenz. Finde heraus:
-1. Ihre aktuelle Rolle und das Unternehmen/die Institution, für die sie arbeitet.
-2. Eine kurze Beschreibung (Wer ist das? Was ist ihr Hintergrund?).
-3. Warum ist diese Person aktuell wichtig oder entscheidend im KI-Sektor (Relevanz)? Warum sollte man ihre Arbeit verfolgen?
-4. Suche nach einem öffentlich zugänglichen, hochauflösenden Profilbild (z.B. von Wikipedia, LinkedIn, GitHub oder einer offiziellen Firmen-/Uni-Webseite). Gib die direkte Bild-URL zurück.
+export interface ExpertAssessment {
+  name: string;
+  role: string;
+  company: string;
+  description: string;
+  relevance: string;
+  topics: string[];
+}
 
-Antworte ausschließlich im JSON Format mit den folgenden Feldern:
-- role: string (Aktuelle Rolle/Position)
-- company: string (Unternehmen/Institution)
-- description: string (Kurze Beschreibung, max 3 Sätze)
-- relevance: string (Warum ist die Person wichtig im KI-Sektor, max 3 Sätze)
-- imageUrl: string (Direkte URL zu einem Profilbild, falls gefunden, sonst leer)`;
+/**
+ * KI-Einschätzung für mehrere Experten in EINER Anfrage (statt einer pro Person).
+ * Fotos und Biografie kommen aus Wikipedia (wikiService), Gemini liefert nur Rolle, Relevanz und Themen.
+ */
+export const analyzeExpertsBatch = async (experts: Expert[]): Promise<ExpertAssessment[]> => {
+  const ai = getClient();
+  const list = experts
+    .map(e => `- ${e.name}${e.company && e.company !== 'Unbekannt' ? ` (${e.company})` : ''}`)
+    .join('\n');
+
+  const prompt = `Recherchiere den AKTUELLEN Stand (heute: ${new Date().toLocaleDateString('de-DE')}) zu folgenden Personen im Kontext Künstlicher Intelligenz:
+${list}
+
+Für JEDE Person:
+- role: aktuelle Rolle/Position (kurz)
+- company: aktuelles Unternehmen/Institution
+- description: Wer ist das? Hintergrund in max. 2 Sätzen
+- relevance: Warum ist die Person aktuell wichtig im KI-Sektor und was bedeutet ihre Arbeit für Schule und Bildung? Max. 3 Sätze
+- topics: 3-5 aktuelle Schwerpunktthemen
+
+Übernimm den Namen exakt wie in der Liste. Antworte auf Deutsch im JSON-Format.`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.1-pro-preview",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }],
       responseMimeType: "application/json",
       responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          role: { type: Type.STRING },
-          company: { type: Type.STRING },
-          description: { type: Type.STRING },
-          relevance: { type: Type.STRING },
-          imageUrl: { type: Type.STRING }
-        },
-        required: ["role", "company", "description", "relevance"]
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            role: { type: Type.STRING },
+            company: { type: Type.STRING },
+            description: { type: Type.STRING },
+            relevance: { type: Type.STRING },
+            topics: { type: Type.ARRAY, items: { type: Type.STRING } }
+          },
+          required: ["name", "role", "company", "description", "relevance", "topics"]
+        }
       }
     }
   });
 
-  try {
-    const data = JSON.parse(response.text || "{}");
-    return {
-      role: data.role || "Unbekannt",
-      company: data.company || "Unbekannt",
-      description: data.description || "Keine Beschreibung verfügbar.",
-      relevance: data.relevance || "Keine Relevanz verfügbar.",
-      imageUrl: data.imageUrl || undefined
-    };
-  } catch (e) {
-    console.error("Failed to parse expert profile:", e);
-    return {
-      role: "Unbekannt",
-      company: "Unbekannt",
-      description: "Fehler beim Laden des Profils.",
-      relevance: "Fehler beim Laden der Relevanz."
-    };
-  }
+  // Mit Google-Suche verpackt das Modell JSON gelegentlich in ```json-Blöcke
+  const raw = (response.text || "[]").trim().replace(/^```(?:json)?\s*/i, '').replace(/```$/, '');
+  const data = JSON.parse(raw);
+  if (!Array.isArray(data)) throw new Error("Unerwartetes Antwortformat von Gemini");
+  return data;
 };
 
 export const generateFastScan = async (onProgress: (msg: string) => void): Promise<FastScanResult> => {

@@ -10,6 +10,9 @@ import { Sparkles, CalendarClock, Play, Menu, User, Zap, Bookmark, ExternalLink,
 import { RelativeTimeBadge } from './components/RelativeTimeBadge';
 import { Sidebar } from './components/Sidebar';
 
+// Erhöhen, wenn gespeicherte Daten beim Laden einmalig migriert werden müssen
+const DATA_VERSION = 2;
+
 // Simple persistence helper
 const loadState = (): AppState => {
   const saved = localStorage.getItem('ai_scout_state_v1');
@@ -18,14 +21,17 @@ const loadState = (): AppState => {
     if (!parsed.experts || parsed.experts.length === 0) {
         parsed.experts = INITIAL_EXPERTS;
     } else {
-        parsed.experts = parsed.experts.map((expert: Expert) => {
-            const initialExpert = INITIAL_EXPERTS.find(e => e.id === expert.id || e.name === expert.name);
-            if (initialExpert && initialExpert.imageUrl && !expert.imageUrl) {
-                return { ...expert, imageUrl: initialExpert.imageUrl };
-            }
-            return expert;
-        });
+        // Einmalige Bereinigung (Datenstand < 2): Bilder der ersten Versionen waren geraten oder in
+        // Größen gebaut, die Wikimedia blockiert. Alles außer manuell gesetzten Fotos wird neu geladen.
+        if ((parsed.dataVersion || 0) < DATA_VERSION) {
+            parsed.experts = parsed.experts.map((expert: Expert) =>
+                expert.imageSource === 'manual'
+                  ? expert
+                  : { ...expert, imageUrl: undefined, imageSource: undefined, wikiFetchedAt: undefined }
+            );
+        }
     }
+    parsed.dataVersion = DATA_VERSION;
     if (!parsed.highlights) {
         parsed.highlights = [];
     }
@@ -38,6 +44,7 @@ const loadState = (): AppState => {
     return parsed;
   }
   return {
+    dataVersion: DATA_VERSION,
     experts: INITIAL_EXPERTS,
     reports: [],
     highlights: [],
@@ -195,7 +202,7 @@ export default function App() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-12">
+      <main className={`${activeTab === 'experts' ? 'max-w-6xl' : 'max-w-4xl'} mx-auto px-4 py-12`}>
         
         {/* Progress Overlay */}
         {state.isGenerating && (
@@ -332,14 +339,13 @@ export default function App() {
 
         {/* Experts Tab */}
         {activeTab === 'experts' && (
-          <div className="max-w-3xl mx-auto space-y-4">
-            <div className="flex justify-end">
-                <button onClick={handleResetExperts} className="text-xs text-slate-400 hover:text-red-600 underline">
-                    Liste auf Standard (21) zurücksetzen
-                </button>
-            </div>
-            <ExpertList experts={state.experts} setExperts={handleUpdateExperts} />
-          </div>
+          <ExpertList
+            experts={state.experts}
+            setExperts={handleUpdateExperts}
+            reports={state.reports}
+            highlights={state.highlights}
+            onReset={handleResetExperts}
+          />
         )}
 
         {/* Knowledge Base / Archive Tab */}
