@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
-import { Expert, Report, ReportItem, LinkStatus, FastScanResult } from '../types';
+import { Expert, ExpertLink, ExpertLinkType, ExpertMilestone, Report, ReportItem, LinkStatus, FastScanResult } from '../types';
 
 // Initialize Gemini
 const getClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -106,21 +106,49 @@ const validateLink = async (url: string, sourceName: string): Promise<LinkStatus
   }
 };
 
-export const analyzeExpertProfile = async (expertName: string): Promise<{ role: string, company: string, description: string, relevance: string, imageUrl?: string }> => {
-  const ai = getClient();
-  
-  const prompt = `Recherchiere die Person '${expertName}' im Kontext von Künstlicher Intelligenz. Finde heraus:
-1. Ihre aktuelle Rolle und das Unternehmen/die Institution, für die sie arbeitet.
-2. Eine kurze Beschreibung (Wer ist das? Was ist ihr Hintergrund?).
-3. Warum ist diese Person aktuell wichtig oder entscheidend im KI-Sektor (Relevanz)? Warum sollte man ihre Arbeit verfolgen?
-4. Suche nach einem öffentlich zugänglichen, hochauflösenden Profilbild (z.B. von Wikipedia, LinkedIn, GitHub oder einer offiziellen Firmen-/Uni-Webseite). Gib die direkte Bild-URL zurück.
+export interface ExpertProfileResearch {
+  role: string;
+  company: string;
+  description: string;
+  relevance: string;
+  bio?: string;
+  currentFocus?: string;
+  positions?: string;
+  milestones: ExpertMilestone[];
+  keyWorks: string[];
+  primaryChannels: string[];
+  suggestedLinks: ExpertLink[];
+}
 
-Antworte ausschließlich im JSON Format mit den folgenden Feldern:
-- role: string (Aktuelle Rolle/Position)
-- company: string (Unternehmen/Institution)
-- description: string (Kurze Beschreibung, max 3 Sätze)
-- relevance: string (Warum ist die Person wichtig im KI-Sektor, max 3 Sätze)
-- imageUrl: string (Direkte URL zu einem Profilbild, falls gefunden, sonst leer)`;
+const LINK_TYPES: ExpertLinkType[] = [
+  'website', 'x', 'linkedin', 'bluesky', 'mastodon', 'threads', 'github',
+  'youtube', 'scholar', 'substack', 'blog', 'podcast', 'wikipedia', 'other',
+];
+
+/**
+ * KI-Recherche für das Experten-Dossier (Google-Search-Grounding).
+ * Bewusst KEINE Bild-URLs: Modelle erfinden diese zuverlässig falsch.
+ * Links werden als „ki" (unverifiziert) markiert und in der Oberfläche so angezeigt.
+ */
+export const analyzeExpertProfile = async (expert: Pick<Expert, 'name' | 'role' | 'company'>): Promise<ExpertProfileResearch> => {
+  const ai = getClient();
+  const context = [expert.role, expert.company].filter(v => v && v !== 'Unbekannt').join(', ');
+
+  const prompt = `Recherchiere mit der Websuche die Person '${expert.name}'${context ? ` (bekannter Kontext: ${context})` : ''} im Kontext von Künstlicher Intelligenz. Heute ist der ${new Date().toLocaleDateString('de-DE')}. Nutze aktuelle Quellen – Rollen ändern sich schnell.
+
+Liefere ein sachliches Dossier auf Deutsch:
+1. role / company: AKTUELLE Rolle und Organisation.
+2. description: Wer ist das? (max. 3 Sätze)
+3. bio: Ausführliche Biografie (5–8 Sätze): Ausbildung, Werdegang, wichtigste Stationen.
+4. relevance: Warum ist die Person aktuell im KI-Sektor wichtig? Warum lohnt es sich, ihr zu folgen? (max. 3 Sätze)
+5. currentFocus: Woran arbeitet sie aktuell (letzte 6–12 Monate)? (2–3 Sätze)
+6. positions: Welche Haltungen vertritt sie in zentralen KI-Debatten (z. B. Risiken, Open Source, Regulierung, AGI)? (2–4 Sätze)
+7. milestones: 4–8 Karrierestationen als { year, text }, chronologisch.
+8. keyWorks: 3–6 Schlüsselwerke (Paper, Bücher, Produkte, Projekte).
+9. primaryChannels: Über welche Kanäle publiziert die Person tatsächlich regelmäßig (z. B. "X", "Substack", "YouTube", "LinkedIn")?
+10. links: Offizielle Profile. Nur URLs, die du in den Suchergebnissen tatsächlich gesehen hast. Erlaubte Typen: ${LINK_TYPES.join(', ')}.
+
+REGELN: Erfinde nichts. Wenn etwas unklar ist, lass das Feld leer. Keine Bild-URLs.`;
 
   const response = await ai.models.generateContent({
     model: "gemini-3.1-pro-preview",
@@ -134,8 +162,32 @@ Antworte ausschließlich im JSON Format mit den folgenden Feldern:
           role: { type: Type.STRING },
           company: { type: Type.STRING },
           description: { type: Type.STRING },
+          bio: { type: Type.STRING },
           relevance: { type: Type.STRING },
-          imageUrl: { type: Type.STRING }
+          currentFocus: { type: Type.STRING },
+          positions: { type: Type.STRING },
+          milestones: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: { year: { type: Type.STRING }, text: { type: Type.STRING } },
+              required: ["year", "text"]
+            }
+          },
+          keyWorks: { type: Type.ARRAY, items: { type: Type.STRING } },
+          primaryChannels: { type: Type.ARRAY, items: { type: Type.STRING } },
+          links: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                type: { type: Type.STRING, enum: LINK_TYPES },
+                url: { type: Type.STRING },
+                label: { type: Type.STRING }
+              },
+              required: ["type", "url"]
+            }
+          }
         },
         required: ["role", "company", "description", "relevance"]
       }
@@ -144,21 +196,26 @@ Antworte ausschließlich im JSON Format mit den folgenden Feldern:
 
   try {
     const data = JSON.parse(response.text || "{}");
+    const suggestedLinks: ExpertLink[] = (Array.isArray(data.links) ? data.links : [])
+      .filter((l: any) => l && typeof l.url === 'string' && /^https?:\/\//.test(l.url) && LINK_TYPES.includes(l.type))
+      .map((l: any) => ({ type: l.type, url: l.url, label: l.label || undefined, origin: 'ki' as const }));
+
     return {
       role: data.role || "Unbekannt",
       company: data.company || "Unbekannt",
       description: data.description || "Keine Beschreibung verfügbar.",
       relevance: data.relevance || "Keine Relevanz verfügbar.",
-      imageUrl: data.imageUrl || undefined
+      bio: data.bio || undefined,
+      currentFocus: data.currentFocus || undefined,
+      positions: data.positions || undefined,
+      milestones: Array.isArray(data.milestones) ? data.milestones.filter((m: any) => m?.year && m?.text) : [],
+      keyWorks: Array.isArray(data.keyWorks) ? data.keyWorks.filter(Boolean) : [],
+      primaryChannels: Array.isArray(data.primaryChannels) ? data.primaryChannels.filter(Boolean) : [],
+      suggestedLinks,
     };
   } catch (e) {
     console.error("Failed to parse expert profile:", e);
-    return {
-      role: "Unbekannt",
-      company: "Unbekannt",
-      description: "Fehler beim Laden des Profils.",
-      relevance: "Fehler beim Laden der Relevanz."
-    };
+    throw new Error("Die KI-Antwort zum Profil konnte nicht gelesen werden.");
   }
 };
 
@@ -206,7 +263,11 @@ export const generateResearchReport = async (
 ): Promise<Report> => {
   const ai = getClient();
   const activeExperts = experts.filter(e => e.active);
-  const expertNames = activeExperts.map(e => `${e.name} (${e.role})`).join(", ");
+  const expertNames = activeExperts.map(e => {
+    const details = [e.role, e.twitterHandle ? `X: ${e.twitterHandle}` : '', e.primaryChannels?.length ? `Kanäle: ${e.primaryChannels.join('/')}` : '']
+      .filter(Boolean).join('; ');
+    return `${e.name} (${details})`;
+  }).join(", ");
   
   onProgress("Analysiere Bildungskontext & starte Deep Search...");
 
