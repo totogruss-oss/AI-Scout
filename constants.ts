@@ -3,7 +3,7 @@ import { Expert, ExpertCategory, ExpertLink, ExpertLinkType } from './types';
 /**
  * Kuratierte Stammdaten der Expert:innen.
  *
- * Grundsätze (Stand: 31.10.2026):
+ * Grundsätze (Stand: 31.10.2026, Kuratierung v2):
  * - Nur Angaben mit hoher Sicherheit werden hier fest eingetragen. Was nicht
  *   sicher belegt ist, bleibt leer und wird zur Laufzeit aus Wikidata/Wikipedia
  *   ergänzt oder kann im Profil manuell gepflegt werden.
@@ -14,6 +14,19 @@ import { Expert, ExpertCategory, ExpertLink, ExpertLinkType } from './types';
 const link = (type: ExpertLinkType, url: string, label?: string): ExpertLink => ({
   type, url, label, origin: 'kuratiert',
 });
+
+/** Version der Kuratierung. Bei Erhöhung werden gespeicherte Listen einmalig angepasst. */
+export const CURATION_VERSION = 2;
+
+/** In Kuratierung v2 entfernt: Goodfellow, Murati, Schmidhuber. */
+export const REMOVED_EXPERT_IDS: Record<number, string[]> = {
+  2: ['8', '16', '21'],
+};
+
+/** In Kuratierung v2 neu: Mollick, Willison, Clark, Narayanan, Kapoor, Hirsch, Zweig. */
+export const ADDED_EXPERT_IDS: Record<number, string[]> = {
+  2: ['22', '23', '24', '25', '26', '27', '28'],
+};
 
 export const EXPERT_CATEGORIES: ExpertCategory[] = [
   'Frontier-Labs & Industrie',
@@ -146,22 +159,6 @@ export const INITIAL_EXPERTS: Expert[] = [
     ],
   },
   {
-    id: '8',
-    name: 'Ian Goodfellow',
-    role: 'Research Scientist',
-    company: 'Google DeepMind',
-    category: 'Grundlagenforschung',
-    topics: ['Generative Models', 'GANs', 'Adversarial ML', 'AI Security'],
-    twitterHandle: '@goodfellow_ian',
-    active: true,
-    wikipediaTitle: 'Ian_Goodfellow', wikipediaLang: 'en',
-    whyFollow: 'Erfinder der GANs – historisch zentral, publiziert öffentlich aber nur noch selten.',
-    primaryChannels: ['X (selten)'],
-    links: [
-      link('x', 'https://x.com/goodfellow_ian'),
-    ],
-  },
-  {
     id: '9',
     name: 'Cassie Kozyrkov',
     role: 'Decision Scientist, ehem. Chief Decision Scientist Google',
@@ -270,23 +267,6 @@ export const INITIAL_EXPERTS: Expert[] = [
     ],
   },
   {
-    id: '16',
-    name: 'Mira Murati',
-    role: 'Gründerin & CEO Thinking Machines Lab, ehem. CTO OpenAI',
-    company: 'Thinking Machines Lab',
-    category: 'Frontier-Labs & Industrie',
-    topics: ['Generative AI', 'Model Development', 'Leadership'],
-    twitterHandle: '@miramurati',
-    active: true,
-    wikipediaTitle: 'Mira_Murati', wikipediaLang: 'en',
-    whyFollow: 'Baut eines der bestfinanzierten neuen Labs auf – Signale kommen eher über Firmen-News als über eigene Posts.',
-    primaryChannels: ['X (selten)', 'Firmen-Blog'],
-    links: [
-      link('x', 'https://x.com/miramurati'),
-      link('website', 'https://thinkingmachines.ai', 'Thinking Machines Lab'),
-    ],
-  },
-  {
     id: '17',
     name: 'Stuart Russell',
     role: 'Professor UC Berkeley, Direktor CHAI',
@@ -352,20 +332,115 @@ export const INITIAL_EXPERTS: Expert[] = [
     ],
   },
   {
-    id: '21',
-    name: 'Jürgen Schmidhuber',
-    role: 'Direktor KAUST AI Initiative, Wiss. Direktor IDSIA',
-    company: 'KAUST / IDSIA',
-    category: 'Grundlagenforschung',
-    topics: ['LSTM', 'Deep Learning History', 'Meta-Learning', 'AGI Predictions'],
-    twitterHandle: '@SchmidhuberAI',
+    id: '22',
+    name: 'Ethan Mollick',
+    role: 'Professor, Co-Direktor Generative AI Labs',
+    company: 'Wharton School, University of Pennsylvania',
+    category: 'Bildung & DACH',
+    topics: ['KI in Bildung', 'KI & Arbeit', 'Prompting', 'Empirische Studien'],
+    twitterHandle: '@emollick',
     active: true,
-    wikipediaTitle: 'Jürgen_Schmidhuber', wikipediaLang: 'en',
-    whyFollow: 'LSTM-Pionier mit deutschem Hintergrund; öffentlich vor allem mit Beiträgen zur Ideengeschichte des Deep Learning.',
-    primaryChannels: ['X', 'Website'],
+    wikipediaTitle: 'Ethan_Mollick', wikipediaLang: 'en',
+    whyFollow: 'Forschungsbasierte, alltagsnahe Einordnung, was KI für Lernen, Lehren und Arbeiten konkret bedeutet – direkt übertragbar auf Schule.',
+    primaryChannels: ['One Useful Thing (Substack)', 'X', 'LinkedIn'],
     links: [
-      link('website', 'https://people.idsia.ch/~juergen/', 'IDSIA'),
-      link('x', 'https://x.com/SchmidhuberAI'),
+      link('substack', 'https://www.oneusefulthing.org', 'One Useful Thing'),
+      link('x', 'https://x.com/emollick'),
     ],
+  },
+  {
+    id: '23',
+    name: 'Simon Willison',
+    role: 'Unabhängiger Entwickler, Blogger, Schöpfer von Datasette & LLM',
+    company: 'Unabhängig',
+    category: 'Praxis & Engineering',
+    topics: ['LLM Engineering', 'Prompt Injection', 'Open Source', 'Tool-Tests'],
+    twitterHandle: '@simonw',
+    active: true,
+    wikipediaTitle: 'Simon_Willison', wikipediaLang: 'en',
+    whyFollow: 'Testet neue Modelle und Tools fast täglich und nüchtern – inklusive Sicherheitsrisiken wie Prompt Injection.',
+    primaryChannels: ['Blog', 'Newsletter', 'X / Bluesky / Mastodon'],
+    links: [
+      link('blog', 'https://simonwillison.net', "Simon Willison's Weblog"),
+      link('x', 'https://x.com/simonw'),
+      link('github', 'https://github.com/simonw'),
+    ],
+  },
+  {
+    id: '24',
+    name: 'Jack Clark',
+    role: 'Mitgründer Anthropic, Autor „Import AI"',
+    company: 'Anthropic',
+    category: 'Sicherheit & Governance',
+    topics: ['Forschungsüberblick', 'AI Policy', 'Frontier Models', 'Governance'],
+    twitterHandle: '@jackclarkSF',
+    active: true,
+    wikipediaTitle: 'Jack_Clark_(AI_policy_expert)', wikipediaLang: 'en',
+    whyFollow: 'Sein wöchentlicher Newsletter „Import AI" ist einer der besten Filter für relevante KI-Forschung und Politik.',
+    primaryChannels: ['Import AI (Newsletter)', 'X'],
+    links: [
+      link('substack', 'https://importai.substack.com', 'Import AI'),
+      link('website', 'https://jack-clark.net', 'jack-clark.net'),
+      link('x', 'https://x.com/jackclarkSF'),
+    ],
+  },
+  {
+    id: '25',
+    name: 'Arvind Narayanan',
+    role: 'Professor für Informatik, Direktor CITP',
+    company: 'Princeton University',
+    category: 'Kritik & Ethik',
+    topics: ['AI as Normal Technology', 'AI Snake Oil', 'Evaluation', 'Gesellschaftliche Folgen'],
+    twitterHandle: '@random_walker',
+    active: true,
+    wikipediaTitle: 'Arvind_Narayanan', wikipediaLang: 'en',
+    whyFollow: 'Evidenzbasierte Skepsis gegenüber Hype UND Untergangsszenarien („AI as Normal Technology") – mit Sayash Kapoor.',
+    primaryChannels: ['Newsletter (mit Sayash Kapoor)', 'X', 'Bluesky'],
+    links: [
+      link('website', 'https://www.cs.princeton.edu/~arvindn/', 'Princeton'),
+      link('x', 'https://x.com/random_walker'),
+    ],
+  },
+  {
+    id: '26',
+    name: 'Sayash Kapoor',
+    role: 'Informatiker, Co-Autor „AI Snake Oil"',
+    company: 'Princeton University (CITP)',
+    category: 'Kritik & Ethik',
+    topics: ['AI as Normal Technology', 'Reproduzierbarkeit', 'AI Agents Evaluation', 'Policy'],
+    twitterHandle: '@sayashk',
+    active: true,
+    whyFollow: 'Co-Autor mit Arvind Narayanan; prüft kritisch, was KI-Systeme und Agenten tatsächlich leisten.',
+    primaryChannels: ['Newsletter (mit Arvind Narayanan)', 'X'],
+    links: [
+      link('x', 'https://x.com/sayashk'),
+    ],
+  },
+  {
+    id: '27',
+    name: 'Nele Hirsch',
+    role: 'Bildungswissenschaftlerin, Gründerin eBildungslabor',
+    company: 'eBildungslabor',
+    category: 'Bildung & DACH',
+    topics: ['KI in der Schule', 'Prüfungskultur', 'Lernen in der Digitalität', 'OER'],
+    active: true,
+    whyFollow: 'Praxisnahe, pädagogisch durchdachte Impulse zu KI im Unterricht – u. a. in der niedersächsischen Reihe „Was kann KI in der Schule?".',
+    primaryChannels: ['Blog', 'Mastodon', 'Workshops'],
+    links: [
+      link('website', 'https://ebildungslabor.de', 'eBildungslabor'),
+    ],
+  },
+  {
+    id: '28',
+    name: 'Katharina Zweig',
+    role: 'Professorin für Informatik, Leiterin Algorithm Accountability Lab',
+    company: 'RPTU Kaiserslautern-Landau',
+    category: 'Kritik & Ethik',
+    topics: ['Algorithmische Verantwortung', 'Fairness', 'Sozioinformatik', 'KI & Gesellschaft'],
+    active: true,
+    wikipediaTitle: 'Katharina_Zweig', wikipediaLang: 'de',
+    whyFollow: 'Erklärt verständlich, wo KI-Entscheidungen gesellschaftlich problematisch werden – stark verwertbar für GL und Medienbildung.',
+    primaryChannels: ['Bücher', 'Vorträge', 'Interviews'],
+    links: [],
   },
 ];

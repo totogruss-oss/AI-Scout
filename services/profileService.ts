@@ -158,14 +158,29 @@ const fetchWikidataEntity = async (qid: string): Promise<WikidataEntity | null> 
 const isHuman = (entity: WikidataEntity) =>
   claimValues(entity, 'P31').some((v: any) => v?.id === 'Q5');
 
-/** Sucht eine Person auf Wikidata per Name; nur Treffer, die Menschen sind. */
+/** Begriffe in Wikidata-Beschreibungen, die auf eine Person aus dem KI-/Tech-/Bildungsumfeld hindeuten. */
+const RELEVANCE_HINTS = [
+  'artificial intelligence', 'künstliche intelligenz', ' ai ', 'machine learning', 'computer',
+  'informatik', 'software', 'scientist', 'wissenschaftler', 'researcher', 'forscher', 'engineer',
+  'ingenieur', 'entrepreneur', 'unternehmer', 'professor', 'educator', 'pädagog', 'bildung',
+  'youtuber', 'programmer', 'programmierer', 'developer', 'entwickler', 'futurist', 'zukunftsforscher',
+  'economist', 'ökonom', 'psycholog', 'executive', 'manager',
+];
+
+/**
+ * Sucht eine Person auf Wikidata per Name. Übernommen wird nur ein Mensch, dessen
+ * Beschreibung zum KI-/Tech-/Bildungsumfeld passt – sonst lieber kein Treffer als
+ * ein falscher (z. B. gleichnamige Sportler oder Musiker).
+ */
 const searchWikidataPerson = async (name: string): Promise<WikidataEntity | null> => {
   const cleanName = name.replace(/\(.*?\)/g, '').trim();
   const data = await fetchJson<{ search: Array<{ id: string; description?: string }> }>(
     `https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${encodeURIComponent(cleanName)}` +
-      `&language=de&uselang=de&type=item&limit=5&format=json&origin=*`
+      `&language=de&uselang=de&type=item&limit=7&format=json&origin=*`
   );
   for (const hit of data?.search || []) {
+    const desc = ` ${(hit.description || '').toLowerCase()} `;
+    if (!RELEVANCE_HINTS.some(h => desc.includes(h))) continue;
     const entity = await fetchWikidataEntity(hit.id);
     if (entity && isHuman(entity)) return entity;
   }

@@ -107,6 +107,8 @@ export interface FastScanResult {
 
 export interface AppState {
   experts: Expert[];
+  /** Stand der kuratierten Expertenliste, auf den die gespeicherten Daten migriert wurden. */
+  curationVersion?: number;
   reports: Report[];
   highlights: Highlight[];
   fastScans: FastScanResult[];

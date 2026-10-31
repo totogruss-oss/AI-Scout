@@ -5,7 +5,7 @@ import { KnowledgeBase } from './components/KnowledgeBase';
 import { FastScanView } from './components/FastScanView';
 import { generateResearchReport, generateFastScan } from './services/geminiService';
 import { Expert, Report, AppState, Highlight } from './types';
-import { INITIAL_EXPERTS } from './constants';
+import { ADDED_EXPERT_IDS, CURATION_VERSION, INITIAL_EXPERTS, REMOVED_EXPERT_IDS } from './constants';
 import { LEGACY_HANDLE_FIXES, LEGACY_IMAGE_URLS } from './legacyData';
 import { mergeLinks } from './services/profileService';
 import { Sparkles, CalendarClock, Play, Menu, User, Zap, Bookmark, ExternalLink, Calendar } from 'lucide-react';
@@ -52,6 +52,24 @@ const migrateExpert = (stored: Expert): Expert => {
   return expert;
 };
 
+/**
+ * Spielt Änderungen der kuratierten Liste (entfernte/neue Personen) genau
+ * einmal pro Kuratierungs-Version in die gespeicherte Liste ein.
+ */
+const applyCurationUpdates = (experts: Expert[], fromVersion: number): Expert[] => {
+  let result = [...experts];
+  for (let v = fromVersion + 1; v <= CURATION_VERSION; v++) {
+    const removed = new Set(REMOVED_EXPERT_IDS[v] || []);
+    result = result.filter(e => !removed.has(e.id));
+    // Nur die in dieser Version neuen Personen ergänzen – selbst gelöschte bleiben gelöscht.
+    const known = new Set(result.flatMap(e => [e.id, e.name.toLowerCase()]));
+    const additions = INITIAL_EXPERTS.filter(e =>
+      (ADDED_EXPERT_IDS[v] || []).includes(e.id) && !known.has(e.id) && !known.has(e.name.toLowerCase()));
+    result = [...result, ...additions];
+  }
+  return result;
+};
+
 // Simple persistence helper
 const loadState = (): AppState => {
   const saved = localStorage.getItem('ai_scout_state_v1');
@@ -60,8 +78,9 @@ const loadState = (): AppState => {
     if (!parsed.experts || parsed.experts.length === 0) {
         parsed.experts = INITIAL_EXPERTS;
     } else {
-        parsed.experts = parsed.experts.map(migrateExpert);
+        parsed.experts = applyCurationUpdates(parsed.experts, parsed.curationVersion || 1).map(migrateExpert);
     }
+    parsed.curationVersion = CURATION_VERSION;
     if (!parsed.highlights) {
         parsed.highlights = [];
     }
@@ -75,6 +94,7 @@ const loadState = (): AppState => {
   }
   return {
     experts: INITIAL_EXPERTS,
+    curationVersion: CURATION_VERSION,
     reports: [],
     highlights: [],
     fastScans: [],
