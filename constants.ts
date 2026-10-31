@@ -3,7 +3,7 @@ import { Expert, ExpertCategory, ExpertLink, ExpertLinkType } from './types';
 /**
  * Kuratierte Stammdaten der Expert:innen.
  *
- * Grundsätze (Stand: 31.10.2026, Kuratierung v2):
+ * Grundsätze (Stand: 31.10.2026, Kuratierung v3):
  * - Nur Angaben mit hoher Sicherheit werden hier fest eingetragen. Was nicht
  *   sicher belegt ist, bleibt leer und wird zur Laufzeit aus Wikidata/Wikipedia
  *   ergänzt oder kann im Profil manuell gepflegt werden.
@@ -16,11 +16,12 @@ const link = (type: ExpertLinkType, url: string, label?: string): ExpertLink => 
 });
 
 /** Version der Kuratierung. Bei Erhöhung werden gespeicherte Listen einmalig angepasst. */
-export const CURATION_VERSION = 2;
+export const CURATION_VERSION = 3;
 
 /** In Kuratierung v2 entfernt: Goodfellow, Murati, Schmidhuber. */
 export const REMOVED_EXPERT_IDS: Record<number, string[]> = {
   2: ['8', '16', '21'],
+  3: ['20'], // Max Tegmark – Überschneidung mit Hinton/Bengio, Russell bleibt
 };
 
 /** In Kuratierung v2 neu: Mollick, Willison, Clark, Narayanan, Kapoor, Hirsch, Zweig. */
@@ -312,23 +313,6 @@ export const INITIAL_EXPERTS: Expert[] = [
     links: [
       link('substack', 'https://garymarcus.substack.com', 'Marcus on AI'),
       link('x', 'https://x.com/GaryMarcus'),
-    ],
-  },
-  {
-    id: '20',
-    name: 'Max Tegmark',
-    role: 'Professor MIT, Präsident Future of Life Institute',
-    company: 'MIT / Future of Life Institute',
-    category: 'Sicherheit & Governance',
-    topics: ['AI Safety', 'Existential Risks', 'Governance', 'Superintelligence'],
-    twitterHandle: '@tegmark',
-    active: true,
-    wikipediaTitle: 'Max_Tegmark', wikipediaLang: 'en',
-    whyFollow: 'Treibt mit dem FLI Kampagnen und offene Briefe zur KI-Regulierung voran.',
-    primaryChannels: ['X', 'FLI', 'Podcasts'],
-    links: [
-      link('x', 'https://x.com/tegmark'),
-      link('website', 'https://futureoflife.org', 'Future of Life Institute'),
     ],
   },
   {
