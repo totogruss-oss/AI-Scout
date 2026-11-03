@@ -1,193 +1,430 @@
-import { Expert } from './types';
+import { Expert, ExpertCategory, ExpertLink, ExpertLinkType } from './types';
+
+/**
+ * Kuratierte Stammdaten der Expert:innen.
+ *
+ * Grundsätze (Stand: 31.10.2026, Kuratierung v3):
+ * - Nur Angaben mit hoher Sicherheit werden hier fest eingetragen. Was nicht
+ *   sicher belegt ist, bleibt leer und wird zur Laufzeit aus Wikidata/Wikipedia
+ *   ergänzt oder kann im Profil manuell gepflegt werden.
+ * - Bilder werden NICHT mehr fest verdrahtet. Sie kommen aus Wikipedia/Wikidata
+ *   (mit Herkunftsangabe), weil die alten, KI-generierten URLs ins Leere liefen.
+ */
+
+const link = (type: ExpertLinkType, url: string, label?: string): ExpertLink => ({
+  type, url, label, origin: 'kuratiert',
+});
+
+/** Version der Kuratierung. Bei Erhöhung werden gespeicherte Listen einmalig angepasst. */
+export const CURATION_VERSION = 3;
+
+/** In Kuratierung v2 entfernt: Goodfellow, Murati, Schmidhuber. */
+export const REMOVED_EXPERT_IDS: Record<number, string[]> = {
+  2: ['8', '16', '21'],
+  3: ['20'], // Max Tegmark – Überschneidung mit Hinton/Bengio, Russell bleibt
+};
+
+/** In Kuratierung v2 neu: Mollick, Willison, Clark, Narayanan, Kapoor, Hirsch, Zweig. */
+export const ADDED_EXPERT_IDS: Record<number, string[]> = {
+  2: ['22', '23', '24', '25', '26', '27', '28'],
+};
+
+export const EXPERT_CATEGORIES: ExpertCategory[] = [
+  'Frontier-Labs & Industrie',
+  'Grundlagenforschung',
+  'Sicherheit & Governance',
+  'Kritik & Ethik',
+  'Praxis & Engineering',
+  'Bildung & DACH',
+];
 
 export const INITIAL_EXPERTS: Expert[] = [
-  { 
-    id: '1', 
-    name: 'Andrew Ng', 
-    role: 'Educator, Entrepreneur', 
-    topics: ['Machine Learning', 'Deep Learning', 'AI Education', 'Business Applications'], 
-    twitterHandle: '@AndrewYNg', 
+  {
+    id: '1',
+    name: 'Andrew Ng',
+    role: 'Gründer DeepLearning.AI, Managing General Partner AI Fund',
+    company: 'DeepLearning.AI / AI Fund',
+    category: 'Praxis & Engineering',
+    topics: ['Machine Learning', 'AI Education', 'Agentic Workflows', 'Business Applications'],
+    twitterHandle: '@AndrewYNg',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Andrew_Ng_-_Time_100_Gala_2024_%28cropped%29.jpg/800px-Andrew_Ng_-_Time_100_Gala_2024_%28cropped%29.jpg'
+    wikipediaTitle: 'Andrew_Ng', wikipediaLang: 'en',
+    whyFollow: 'Übersetzt Forschung in praktische Anwendung und Weiterbildung; sein Newsletter „The Batch" ist ein verlässlicher Wochenüberblick.',
+    primaryChannels: ['The Batch (Newsletter)', 'X', 'LinkedIn'],
+    links: [
+      link('website', 'https://www.andrewng.org', 'andrewng.org'),
+      link('x', 'https://x.com/AndrewYNg'),
+      link('blog', 'https://www.deeplearning.ai/the-batch/', 'The Batch'),
+    ],
   },
-  { 
-    id: '2', 
-    name: 'Geoffrey Hinton', 
-    role: 'Researcher, Scientist', 
-    topics: ['Deep Learning', 'Neural Networks', 'AI Safety', 'Risks'], 
-    twitterHandle: '@geoffreyhinton', 
+  {
+    id: '2',
+    name: 'Geoffrey Hinton',
+    role: 'Professor emeritus, Nobelpreisträger Physik 2024',
+    company: 'University of Toronto',
+    category: 'Sicherheit & Governance',
+    topics: ['Deep Learning', 'Neural Networks', 'AI Safety', 'Risks'],
+    twitterHandle: '@geoffreyhinton',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Geoffrey_Hinton_at_the_2024_Nobel_Prize_Press_Conference_%28cropped%29.jpg/800px-Geoffrey_Hinton_at_the_2024_Nobel_Prize_Press_Conference_%28cropped%29.jpg'
+    wikipediaTitle: 'Geoffrey_Hinton', wikipediaLang: 'en',
+    whyFollow: 'Mitbegründer des Deep Learning, seit 2023 eine der lautesten Stimmen für KI-Risiken – hohes öffentliches Gewicht.',
+    primaryChannels: ['Interviews & Vorträge', 'X'],
+    links: [
+      link('website', 'https://www.cs.toronto.edu/~hinton/', 'Uni-Seite'),
+      link('x', 'https://x.com/geoffreyhinton'),
+    ],
   },
-  { 
-    id: '3', 
-    name: 'Yann LeCun', 
-    role: 'Chief AI Scientist (Meta)', 
-    topics: ['Deep Learning', 'Computer Vision', 'Open Source AI', 'AGI-Diskurs'], 
-    twitterHandle: '@ylecun', 
+  {
+    id: '3',
+    name: 'Yann LeCun',
+    role: 'Executive Chairman AMI Labs, Professor NYU',
+    company: 'AMI Labs / NYU',
+    category: 'Grundlagenforschung',
+    topics: ['World Models', 'Computer Vision', 'Open Source AI', 'AGI-Diskurs'],
+    twitterHandle: '@ylecun',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Yann_LeCun_-_2018_%28cropped%29.jpg/800px-Yann_LeCun_-_2018_%28cropped%29.jpg'
+    wikipediaTitle: 'Yann_LeCun', wikipediaLang: 'en',
+    whyFollow: 'Prominentester Gegenpol zur „LLMs führen zu AGI"-These; hat Meta Ende 2025 verlassen und baut mit AMI Labs Weltmodelle.',
+    primaryChannels: ['X', 'LinkedIn', 'Threads'],
+    links: [
+      link('website', 'http://yann.lecun.com', 'yann.lecun.com'),
+      link('x', 'https://x.com/ylecun'),
+    ],
   },
-  { 
-    id: '4', 
-    name: 'Fei-Fei Li', 
-    role: 'Researcher, Director (Stanford)', 
-    topics: ['Computer Vision', 'Human-Centered AI', 'AI Ethics', 'Healthcare', 'Education'], 
-    twitterHandle: '@fei_fei_li', 
+  {
+    id: '4',
+    name: 'Fei-Fei Li',
+    role: 'Mitgründerin & CEO World Labs, Professorin Stanford',
+    company: 'World Labs / Stanford HAI',
+    category: 'Grundlagenforschung',
+    topics: ['Computer Vision', 'Spatial Intelligence', 'Human-Centered AI', 'Education'],
+    twitterHandle: '@drfeifei',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Fei-Fei_Li_2024.jpg/800px-Fei-Fei_Li_2024.jpg'
+    wikipediaTitle: 'Fei-Fei_Li', wikipediaLang: 'en',
+    whyFollow: 'Schöpferin von ImageNet, heute Treiberin von „Spatial Intelligence" und menschenzentrierter KI.',
+    primaryChannels: ['X', 'Vorträge'],
+    links: [
+      link('x', 'https://x.com/drfeifei'),
+      link('website', 'https://hai.stanford.edu', 'Stanford HAI'),
+    ],
   },
-  { 
-    id: '5', 
-    name: 'Demis Hassabis', 
-    role: 'CEO (DeepMind)', 
-    topics: ['Deep Reinforcement Learning', 'AlphaGo', 'AlphaFold', 'Neuroscience'], 
-    twitterHandle: '@demishassabis', 
+  {
+    id: '5',
+    name: 'Demis Hassabis',
+    role: 'CEO Google DeepMind, Nobelpreisträger Chemie 2024',
+    company: 'Google DeepMind',
+    category: 'Frontier-Labs & Industrie',
+    topics: ['Gemini', 'AlphaFold', 'AI for Science', 'AGI'],
+    twitterHandle: '@demishassabis',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Demis_Hassabis_Royal_Society.jpg/800px-Demis_Hassabis_Royal_Society.jpg'
+    wikipediaTitle: 'Demis_Hassabis', wikipediaLang: 'en',
+    whyFollow: 'Leitet eines der drei führenden Frontier-Labs – seine Aussagen sind Frühindikatoren für Googles KI-Strategie.',
+    primaryChannels: ['X', 'Interviews'],
+    links: [
+      link('x', 'https://x.com/demishassabis'),
+      link('website', 'https://deepmind.google', 'Google DeepMind'),
+    ],
   },
-  { 
-    id: '6', 
-    name: 'Andrej Karpathy', 
-    role: 'Educator, Engineer', 
-    topics: ['Computer Vision', 'Deep Learning', 'Self-Driving Cars', 'AI Agents'], 
-    twitterHandle: '@karpathy', 
+  {
+    id: '6',
+    name: 'Andrej Karpathy',
+    role: 'Gründer Eureka Labs',
+    company: 'Eureka Labs',
+    category: 'Praxis & Engineering',
+    topics: ['LLMs', 'AI Education', 'Software 3.0', 'AI Agents'],
+    twitterHandle: '@karpathy',
     active: true,
-    imageUrl: 'https://avatars.githubusercontent.com/u/17522?v=4'
+    wikipediaTitle: 'Andrej_Karpathy', wikipediaLang: 'en',
+    whyFollow: 'Der beste Erklärer der LLM-Welt; prägt Begriffe („Vibe Coding") und baut mit Eureka Labs KI-native Bildung.',
+    primaryChannels: ['X', 'YouTube', 'GitHub'],
+    links: [
+      link('website', 'https://karpathy.ai', 'karpathy.ai'),
+      link('x', 'https://x.com/karpathy'),
+      link('youtube', 'https://www.youtube.com/@AndrejKarpathy'),
+      link('github', 'https://github.com/karpathy'),
+    ],
   },
-  { 
-    id: '7', 
-    name: 'Yoshua Bengio', 
-    role: 'Researcher, Scientist', 
-    topics: ['Deep Learning', 'AI Ethics', 'AI Governance', 'Safety'], 
-    twitterHandle: '@yoshua_bengio', 
+  {
+    id: '7',
+    name: 'Yoshua Bengio',
+    role: 'Professor Université de Montréal, Gründer Mila & LawZero',
+    company: 'Mila / LawZero',
+    category: 'Sicherheit & Governance',
+    topics: ['Deep Learning', 'AI Safety', 'International AI Safety Report', 'Governance'],
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Yoshua_Bengio_2019.jpg/800px-Yoshua_Bengio_2019.jpg'
+    wikipediaTitle: 'Yoshua_Bengio', wikipediaLang: 'en',
+    whyFollow: 'Leitet den International AI Safety Report – die wissenschaftlich fundierteste Stimme der Sicherheitsdebatte.',
+    primaryChannels: ['Blog', 'Reports', 'Interviews'],
+    links: [
+      link('website', 'https://yoshuabengio.org', 'yoshuabengio.org'),
+    ],
   },
-  { 
-    id: '8', 
-    name: 'Ian Goodfellow', 
-    role: 'Researcher, Scientist', 
-    topics: ['Generative Models', 'GANs', 'Deep Learning', 'AI Security'], 
-    twitterHandle: '@goodfellow_ian', 
+  {
+    id: '9',
+    name: 'Cassie Kozyrkov',
+    role: 'Decision Scientist, ehem. Chief Decision Scientist Google',
+    company: 'Kozyr',
+    category: 'Praxis & Engineering',
+    topics: ['Decision Intelligence', 'AI in Organizations', 'Data Literacy'],
+    twitterHandle: '@quaesita',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Ian_Goodfellow.jpg/800px-Ian_Goodfellow.jpg'
+    wikipediaTitle: 'Cassie_Kozyrkov', wikipediaLang: 'en',
+    whyFollow: 'Erklärt, wie Organisationen gute Entscheidungen mit KI treffen – nah an Schulleitungs- und Management-Fragen.',
+    primaryChannels: ['LinkedIn', 'Substack', 'Keynotes'],
+    links: [
+      link('x', 'https://x.com/quaesita'),
+    ],
   },
-  { 
-    id: '9', 
-    name: 'Cassie Kozyrkov', 
-    role: 'Decision Scientist', 
-    topics: ['Decision Intelligence', 'AI in Organizations', 'AI Skepticism'], 
-    twitterHandle: '@cassiekozyrkov', 
+  {
+    id: '10',
+    name: 'Mustafa Suleyman',
+    role: 'CEO Microsoft AI',
+    company: 'Microsoft',
+    category: 'Frontier-Labs & Industrie',
+    topics: ['Copilot', 'Consumer AI', 'Superintelligence', 'Policy'],
+    twitterHandle: '@mustafasuleyman',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Cassie_Kozyrkov_2019.jpg/800px-Cassie_Kozyrkov_2019.jpg'
+    wikipediaTitle: 'Mustafa_Suleyman', wikipediaLang: 'en',
+    whyFollow: 'Verantwortet Microsofts Consumer-KI (Copilot) – direkt relevant für MS-365-Schulen.',
+    primaryChannels: ['X', 'LinkedIn', 'Essays'],
+    links: [
+      link('x', 'https://x.com/mustafasuleyman'),
+    ],
   },
-  { 
-    id: '10', 
-    name: 'Mustafa Suleyman', 
-    role: 'CEO (Microsoft AI)', 
-    topics: ['AI Governance', 'Ethics', 'Human Rights', 'Policy', 'Consumer AI'], 
-    twitterHandle: '@mustafasuleyman', 
+  {
+    id: '11',
+    name: 'Doris Weßels',
+    role: 'Wirtschaftsinformatikerin, Leiterin Zukunftslabor Generative KI',
+    company: 'KI-Anwendungszentrum Schleswig-Holstein / VK:KIWA',
+    category: 'Bildung & DACH',
+    topics: ['Generative AI', 'Hochschulbildung', 'Prüfungskultur', 'Schreiben mit KI'],
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Mustafa_Suleyman_2023.jpg/800px-Mustafa_Suleyman_2023.jpg'
+    wikipediaTitle: 'Doris_Weßels', wikipediaLang: 'de',
+    whyFollow: 'Eine der prägenden Stimmen zu generativer KI in Bildung und Prüfungskultur im deutschsprachigen Raum.',
+    primaryChannels: ['LinkedIn', 'Vorträge', 'Fachartikel'],
+    links: [
+      link('website', 'https://www.haw-kiel.de/en/fachbereiche/wirtschaft/wir-ueber-uns/lehre/prof-dr-doris-wessels/', 'HAW Kiel'),
+      link('website', 'https://vkkiwa.de', 'VK:KIWA'),
+    ],
   },
-  { 
-    id: '11', 
-    name: 'Doris Weßels', 
-    role: 'Professor, Researcher', 
-    topics: ['Generative AI', 'Education', 'NLP', 'Business AI', 'Prüfungskultur'], 
-    twitterHandle: '@doris_wessels', 
+  {
+    id: '12',
+    name: 'Peter Steinberger',
+    role: 'Entwickler (Personal Agents), Schöpfer von OpenClaw',
+    company: 'OpenAI',
+    category: 'Praxis & Engineering',
+    topics: ['AI Agents', 'Open Source', 'Agentic Coding', 'Practical Implementation'],
+    twitterHandle: '@steipete',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Doris_Wessels_2023.jpg/800px-Doris_Wessels_2023.jpg'
+    wikipediaTitle: 'Peter_Steinberger', wikipediaLang: 'en',
+    whyFollow: 'Schöpfer von OpenClaw, seit Februar 2026 bei OpenAI für Personal Agents – zeigt sehr konkret, was Agenten heute können.',
+    primaryChannels: ['X', 'Blog', 'GitHub'],
+    links: [
+      link('blog', 'https://steipete.me', 'steipete.me'),
+      link('x', 'https://x.com/steipete'),
+      link('github', 'https://github.com/steipete'),
+    ],
   },
-  { 
-    id: '12', 
-    name: 'Peter Steinberger', 
-    role: 'Engineer, Developer', 
-    topics: ['Open Source AI', 'AI Agents', 'LLM Engineering', 'Practical Implementation'], 
-    twitterHandle: '@psteinberger', 
+  {
+    id: '13',
+    name: 'Cedric Mössner (The Morpheus)',
+    role: 'YouTuber, IT-Educator',
+    company: 'The Morpheus Tutorials',
+    category: 'Bildung & DACH',
+    topics: ['AI Education', 'Machine Learning', 'Security', 'Programming'],
     active: true,
-    imageUrl: 'https://avatars.githubusercontent.com/u/10137?v=4'
+    whyFollow: 'Deutschsprachige, technisch solide KI-Erklärungen auf YouTube – gut für den eigenen Überblick und als Unterrichtsmaterial.',
+    primaryChannels: ['YouTube'],
+    links: [
+      link('youtube', 'https://www.youtube.com/@themorpheustutorials', 'The Morpheus Tutorials'),
+    ],
   },
-  { 
-    id: '13', 
-    name: 'Cedric Mössner (The Morpheus)', 
-    role: 'Educator, YouTube Creator', 
-    topics: ['AI Education', 'Machine Learning', 'Security', 'Programming'], 
-    twitterHandle: '@TheMorpheus7', 
+  {
+    id: '14',
+    name: 'Yasmin Weiß',
+    role: 'Professorin, Zukunftsforscherin',
+    company: 'Technische Hochschule Nürnberg',
+    category: 'Bildung & DACH',
+    topics: ['Future Skills', 'Education', 'AI & Work', 'Competencies'],
     active: true,
-    imageUrl: 'https://avatars.githubusercontent.com/u/19875334?v=4'
+    wikipediaTitle: 'Yasmin_Weiß', wikipediaLang: 'de',
+    whyFollow: 'Verbindet KI mit Arbeitsmarkt und Future Skills – Perspektive „Wofür bilden wir aus?".',
+    primaryChannels: ['LinkedIn', 'Keynotes', 'Bücher'],
+    links: [],
   },
-  { 
-    id: '14', 
-    name: 'Yasmin Weiß', 
-    role: 'Professor, Futurist', 
-    topics: ['Future Skills', 'Education', 'AI & Work', 'Competencies'], 
-    twitterHandle: '@YasminWeiss', 
+  {
+    id: '15',
+    name: 'Dario Amodei',
+    role: 'CEO & Mitgründer Anthropic',
+    company: 'Anthropic',
+    category: 'Frontier-Labs & Industrie',
+    topics: ['AI Safety', 'Claude', 'Responsible Scaling', 'Policy'],
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Yasmin_Weiss_2022.jpg/800px-Yasmin_Weiss_2022.jpg'
+    wikipediaTitle: 'Dario_Amodei', wikipediaLang: 'en',
+    whyFollow: 'Leitet ein Frontier-Lab mit Sicherheitsfokus; seine langen Essays setzen regelmäßig die Agenda der Debatte.',
+    primaryChannels: ['Essays', 'Interviews'],
+    links: [
+      link('website', 'https://www.darioamodei.com', 'darioamodei.com (Essays)'),
+    ],
   },
-  { 
-    id: '15', 
-    name: 'Dario Amodei', 
-    role: 'CEO (Anthropic)', 
-    topics: ['AI Safety', 'Risk Assessment', 'Model Security', 'Responsible AI'], 
-    twitterHandle: '@darioamodei', 
+  {
+    id: '17',
+    name: 'Stuart Russell',
+    role: 'Professor UC Berkeley, Direktor CHAI',
+    company: 'UC Berkeley',
+    category: 'Sicherheit & Governance',
+    topics: ['AI Safety', 'AI Governance', 'Value Alignment', 'Long-term Risks'],
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Dario_Amodei_2023.jpg/800px-Dario_Amodei_2023.jpg'
+    wikipediaTitle: 'Stuart_J._Russell', wikipediaLang: 'en',
+    whyFollow: 'Autor des KI-Standardlehrbuchs; argumentiert grundsätzlich zur Kontrollierbarkeit von KI.',
+    primaryChannels: ['Vorträge', 'Interviews'],
+    links: [
+      link('website', 'https://people.eecs.berkeley.edu/~russell/', 'Berkeley'),
+    ],
   },
-  { 
-    id: '16', 
-    name: 'Mira Murati', 
-    role: 'Entrepreneur, Ex-CTO OpenAI', 
-    topics: ['Generative AI', 'Responsible AI', 'Model Development', 'Leadership'], 
-    twitterHandle: '@MiraMurati', 
+  {
+    id: '18',
+    name: 'Timnit Gebru',
+    role: 'Gründerin & Executive Director DAIR',
+    company: 'Distributed AI Research Institute (DAIR)',
+    category: 'Kritik & Ethik',
+    topics: ['AI Bias', 'Fairness', 'Ethics', 'Power Structures'],
+    twitterHandle: '@timnitGebru',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Mira_Murati_2023.jpg/800px-Mira_Murati_2023.jpg'
+    wikipediaTitle: 'Timnit_Gebru', wikipediaLang: 'en',
+    whyFollow: 'Zentrale Kritikerin von Machtkonzentration und Bias – wichtiges Korrektiv zum Industrie-Narrativ.',
+    primaryChannels: ['Bluesky / Mastodon', 'DAIR-Publikationen'],
+    links: [
+      link('website', 'https://www.dair-institute.org', 'DAIR'),
+    ],
   },
-  { 
-    id: '17', 
-    name: 'Stuart Russell', 
-    role: 'Professor, Researcher', 
-    topics: ['AI Safety', 'AI Governance', 'Decision Theory', 'Long-term Risks'], 
-    twitterHandle: '@s_russell', 
+  {
+    id: '19',
+    name: 'Gary Marcus',
+    role: 'Kognitionswissenschaftler, Autor, Kritiker',
+    company: 'NYU (emeritus)',
+    category: 'Kritik & Ethik',
+    topics: ['AI Limitations', 'Neurosymbolic AI', 'Robustness', 'Regulation'],
+    twitterHandle: '@GaryMarcus',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Stuart_J._Russell_2019.jpg/800px-Stuart_J._Russell_2019.jpg'
+    wikipediaTitle: 'Gary_Marcus', wikipediaLang: 'en',
+    whyFollow: 'Lautester Skeptiker des LLM-Hypes – hilft, Versprechen kritisch einzuordnen.',
+    primaryChannels: ['Substack', 'X'],
+    links: [
+      link('substack', 'https://garymarcus.substack.com', 'Marcus on AI'),
+      link('x', 'https://x.com/GaryMarcus'),
+    ],
   },
-  { 
-    id: '18', 
-    name: 'Timnit Gebru', 
-    role: 'Researcher, Activist', 
-    topics: ['AI Bias', 'Fairness', 'Ethics', 'Power Structures'], 
-    twitterHandle: '@timnit', 
+  {
+    id: '22',
+    name: 'Ethan Mollick',
+    role: 'Professor, Co-Direktor Generative AI Labs',
+    company: 'Wharton School, University of Pennsylvania',
+    category: 'Bildung & DACH',
+    topics: ['KI in Bildung', 'KI & Arbeit', 'Prompting', 'Empirische Studien'],
+    twitterHandle: '@emollick',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Timnit_Gebru_2021.jpg/800px-Timnit_Gebru_2021.jpg'
+    wikipediaTitle: 'Ethan_Mollick', wikipediaLang: 'en',
+    whyFollow: 'Forschungsbasierte, alltagsnahe Einordnung, was KI für Lernen, Lehren und Arbeiten konkret bedeutet – direkt übertragbar auf Schule.',
+    primaryChannels: ['One Useful Thing (Substack)', 'X', 'LinkedIn'],
+    links: [
+      link('substack', 'https://www.oneusefulthing.org', 'One Useful Thing'),
+      link('x', 'https://x.com/emollick'),
+    ],
   },
-  { 
-    id: '19', 
-    name: 'Gary Marcus', 
-    role: 'Researcher, Critic', 
-    topics: ['AI Limitations', 'Hybrid AI', 'Robustness', 'Regulation'], 
-    twitterHandle: '@GaryMarcus', 
+  {
+    id: '23',
+    name: 'Simon Willison',
+    role: 'Unabhängiger Entwickler, Blogger, Schöpfer von Datasette & LLM',
+    company: 'Unabhängig',
+    category: 'Praxis & Engineering',
+    topics: ['LLM Engineering', 'Prompt Injection', 'Open Source', 'Tool-Tests'],
+    twitterHandle: '@simonw',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Gary_Marcus_2019.jpg/800px-Gary_Marcus_2019.jpg'
+    wikipediaTitle: 'Simon_Willison', wikipediaLang: 'en',
+    whyFollow: 'Testet neue Modelle und Tools fast täglich und nüchtern – inklusive Sicherheitsrisiken wie Prompt Injection.',
+    primaryChannels: ['Blog', 'Newsletter', 'X / Bluesky / Mastodon'],
+    links: [
+      link('blog', 'https://simonwillison.net', "Simon Willison's Weblog"),
+      link('x', 'https://x.com/simonw'),
+      link('github', 'https://github.com/simonw'),
+    ],
   },
-  { 
-    id: '20', 
-    name: 'Max Tegmark', 
-    role: 'Professor, Activist', 
-    topics: ['AI Safety', 'Existential Risks', 'Governance', 'Long-term AI Strategy'], 
-    twitterHandle: '@tegmark', 
+  {
+    id: '24',
+    name: 'Jack Clark',
+    role: 'Mitgründer Anthropic, Autor „Import AI"',
+    company: 'Anthropic',
+    category: 'Sicherheit & Governance',
+    topics: ['Forschungsüberblick', 'AI Policy', 'Frontier Models', 'Governance'],
+    twitterHandle: '@jackclarkSF',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Max_Tegmark_2018.jpg/800px-Max_Tegmark_2018.jpg'
+    wikipediaTitle: 'Jack_Clark_(AI_policy_expert)', wikipediaLang: 'en',
+    whyFollow: 'Sein wöchentlicher Newsletter „Import AI" ist einer der besten Filter für relevante KI-Forschung und Politik.',
+    primaryChannels: ['Import AI (Newsletter)', 'X'],
+    links: [
+      link('substack', 'https://importai.substack.com', 'Import AI'),
+      link('website', 'https://jack-clark.net', 'jack-clark.net'),
+      link('x', 'https://x.com/jackclarkSF'),
+    ],
   },
-  { 
-    id: '21', 
-    name: 'Jürgen Schmidhuber', 
-    role: 'Professor, Researcher', 
-    topics: ['Deep Learning Architecture', 'LSTM', 'GANs', 'AGI Predictions'], 
-    twitterHandle: '@juergenscmidhuber', 
+  {
+    id: '25',
+    name: 'Arvind Narayanan',
+    role: 'Professor für Informatik, Direktor CITP',
+    company: 'Princeton University',
+    category: 'Kritik & Ethik',
+    topics: ['AI as Normal Technology', 'AI Snake Oil', 'Evaluation', 'Gesellschaftliche Folgen'],
+    twitterHandle: '@random_walker',
     active: true,
-    imageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/J%C3%BCrgen_Schmidhuber_2017.jpg/800px-J%C3%BCrgen_Schmidhuber_2017.jpg'
-  }
+    wikipediaTitle: 'Arvind_Narayanan', wikipediaLang: 'en',
+    whyFollow: 'Evidenzbasierte Skepsis gegenüber Hype UND Untergangsszenarien („AI as Normal Technology") – mit Sayash Kapoor.',
+    primaryChannels: ['Newsletter (mit Sayash Kapoor)', 'X', 'Bluesky'],
+    links: [
+      link('website', 'https://www.cs.princeton.edu/~arvindn/', 'Princeton'),
+      link('x', 'https://x.com/random_walker'),
+    ],
+  },
+  {
+    id: '26',
+    name: 'Sayash Kapoor',
+    role: 'Informatiker, Co-Autor „AI Snake Oil"',
+    company: 'Princeton University (CITP)',
+    category: 'Kritik & Ethik',
+    topics: ['AI as Normal Technology', 'Reproduzierbarkeit', 'AI Agents Evaluation', 'Policy'],
+    twitterHandle: '@sayashk',
+    active: true,
+    whyFollow: 'Co-Autor mit Arvind Narayanan; prüft kritisch, was KI-Systeme und Agenten tatsächlich leisten.',
+    primaryChannels: ['Newsletter (mit Arvind Narayanan)', 'X'],
+    links: [
+      link('x', 'https://x.com/sayashk'),
+    ],
+  },
+  {
+    id: '27',
+    name: 'Nele Hirsch',
+    role: 'Bildungswissenschaftlerin, Gründerin eBildungslabor',
+    company: 'eBildungslabor',
+    category: 'Bildung & DACH',
+    topics: ['KI in der Schule', 'Prüfungskultur', 'Lernen in der Digitalität', 'OER'],
+    active: true,
+    whyFollow: 'Praxisnahe, pädagogisch durchdachte Impulse zu KI im Unterricht – u. a. in der niedersächsischen Reihe „Was kann KI in der Schule?".',
+    primaryChannels: ['Blog', 'Mastodon', 'Workshops'],
+    links: [
+      link('website', 'https://ebildungslabor.de', 'eBildungslabor'),
+    ],
+  },
+  {
+    id: '28',
+    name: 'Katharina Zweig',
+    role: 'Professorin für Informatik, Leiterin Algorithm Accountability Lab',
+    company: 'RPTU Kaiserslautern-Landau',
+    category: 'Kritik & Ethik',
+    topics: ['Algorithmische Verantwortung', 'Fairness', 'Sozioinformatik', 'KI & Gesellschaft'],
+    active: true,
+    wikipediaTitle: 'Katharina_Zweig', wikipediaLang: 'de',
+    whyFollow: 'Erklärt verständlich, wo KI-Entscheidungen gesellschaftlich problematisch werden – stark verwertbar für GL und Medienbildung.',
+    primaryChannels: ['Bücher', 'Vorträge', 'Interviews'],
+    links: [],
+  },
 ];
