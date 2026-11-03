@@ -28,3 +28,7 @@ Danach `http://localhost:3000` öffnen und den eigenen Key über das Schlüssel-
 Der Workflow `.github/workflows/deploy-pages.yml` baut die App bei jedem Push auf `main` und veröffentlicht sie unter `https://<github-user>.github.io/<repo>/`.
 
 Einmalig einrichten: Im Repository unter **Settings → Pages → Build and deployment → Source** die Option **GitHub Actions** wählen.
+
+## Lizenz
+
+Veröffentlicht unter der [MIT-Lizenz](LICENSE). Die Nutzung erfolgt ohne Gewähr; insbesondere für Kosten, die über den eigenen API-Key entstehen, ist jede Person selbst verantwortlich.
