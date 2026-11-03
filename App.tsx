@@ -9,6 +9,9 @@ import { INITIAL_EXPERTS } from './constants';
 import { Sparkles, CalendarClock, Play, Menu, User, Zap, Bookmark, ExternalLink, Calendar } from 'lucide-react';
 import { RelativeTimeBadge } from './components/RelativeTimeBadge';
 import { Sidebar } from './components/Sidebar';
+import { ApiKeyDialog } from './components/ApiKeyDialog';
+import { KeyRound } from 'lucide-react';
+import { getApiKey, MissingApiKeyError, KEY_CHANGED_EVENT, KEY_REQUIRED_EVENT } from './services/apiKeyStore';
 
 // Simple persistence helper
 const loadState = (): AppState => {
@@ -51,6 +54,23 @@ export default function App() {
   const [state, setState] = useState<AppState>(loadState());
   const [activeTab, setActiveTab] = useState<'dashboard' | 'experts' | 'archive'>('dashboard');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [hasKey, setHasKey] = useState<boolean>(() => !!getApiKey());
+  const [keyDialog, setKeyDialog] = useState<{ open: boolean; reason?: string }>({ open: false });
+
+  // Key-Status beobachten; Dialog öffnen, sobald eine Funktion ohne Key aufgerufen wird
+  useEffect(() => {
+    const onChanged = () => setHasKey(!!getApiKey());
+    const onRequired = () => setKeyDialog({
+      open: true,
+      reason: 'Für diese Funktion brauchst du einen Gemini-API-Key. Bitte hinterlege ihn kurz, danach kannst du direkt weitermachen.'
+    });
+    window.addEventListener(KEY_CHANGED_EVENT, onChanged);
+    window.addEventListener(KEY_REQUIRED_EVENT, onRequired);
+    return () => {
+      window.removeEventListener(KEY_CHANGED_EVENT, onChanged);
+      window.removeEventListener(KEY_REQUIRED_EVENT, onRequired);
+    };
+  }, []);
 
   // Persist state changes
   useEffect(() => {
@@ -99,9 +119,11 @@ export default function App() {
         ...prev,
         isGenerating: false,
         generatingType: undefined,
-        progressMessage: 'Fehler aufgetreten.'
+        progressMessage: ''
       }));
-      alert("Es gab ein Problem bei der Recherche. Bitte überprüfe deinen API Key oder versuche es später noch einmal.");
+      if (!(e instanceof MissingApiKeyError)) {
+        alert("Es gab ein Problem bei der Recherche. Bitte überprüfe deinen API-Key (Schlüssel-Symbol oben rechts) oder versuche es später noch einmal.");
+      }
     }
   };
 
@@ -127,9 +149,11 @@ export default function App() {
         ...prev,
         isGenerating: false,
         generatingType: undefined,
-        progressMessage: 'Fehler aufgetreten.'
+        progressMessage: ''
       }));
-      alert("Es gab ein Problem beim Fast Scan. Bitte überprüfe deinen API Key oder versuche es später noch einmal.");
+      if (!(e instanceof MissingApiKeyError)) {
+        alert("Es gab ein Problem beim Fast Scan. Bitte überprüfe deinen API-Key (Schlüssel-Symbol oben rechts) oder versuche es später noch einmal.");
+      }
     }
   };
 
@@ -142,6 +166,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-zinc-200">
       <Sidebar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} state={state} />
+      <ApiKeyDialog
+        isOpen={keyDialog.open}
+        reason={keyDialog.reason}
+        onClose={() => setKeyDialog({ open: false })}
+      />
       
       {/* Header */}
       <header className="border-b-2 border-zinc-900 bg-white sticky top-0 z-50">
@@ -163,8 +192,16 @@ export default function App() {
             <div className="text-4xl md:text-5xl font-black editorial-headline tracking-tighter uppercase">
               AI Scout
             </div>
-            <button className="text-zinc-900 hover:text-zinc-600">
-              <User className="w-6 h-6" />
+            <button
+              onClick={() => setKeyDialog({ open: true })}
+              className="relative text-zinc-900 hover:text-zinc-600"
+              title={hasKey ? 'API-Key hinterlegt: verwalten' : 'API-Key hinterlegen'}
+              aria-label={hasKey ? 'API-Key verwalten' : 'API-Key hinterlegen'}
+            >
+              <KeyRound className="w-6 h-6" />
+              <span
+                className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${hasKey ? 'bg-emerald-500' : 'bg-amber-500'}`}
+              />
             </button>
           </div>
         </div>
@@ -256,6 +293,18 @@ export default function App() {
                 </div>
               </button>
             </div>
+
+            {!hasKey && (
+              <div className="max-w-2xl mx-auto -mt-6 text-center text-sm text-zinc-600 editorial-text italic">
+                Für die Recherchen brauchst du einen eigenen Gemini-API-Key.{' '}
+                <button
+                  onClick={() => setKeyDialog({ open: true })}
+                  className="not-italic font-bold text-zinc-900 underline underline-offset-4 hover:text-zinc-600"
+                >
+                  Jetzt hinterlegen
+                </button>
+              </div>
+            )}
 
             {/* Highlights Section */}
             {state.highlights.length > 0 && (
