@@ -29,6 +29,8 @@ jobs:
         env:
           # Unterpfad der Projektseite, z. B. https://<user>.github.io/<repo>/
           VITE_BASE: /${{ github.event.repository.name }}/
+          # Öffentliche OAuth-Client-ID für "Mit Google verbinden" (Repository-Variable, kein Secret)
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

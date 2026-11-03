@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ExpertList } from './components/ExpertList';
 import { Newsletter } from './components/Newsletter';
 import { KnowledgeBase } from './components/KnowledgeBase';
@@ -12,7 +12,10 @@ import { Sparkles, CalendarClock, Play, Menu, User, Zap, Bookmark, ExternalLink,
 import { RelativeTimeBadge } from './components/RelativeTimeBadge';
 import { Sidebar } from './components/Sidebar';
 import { ApiKeyDialog } from './components/ApiKeyDialog';
-import { KeyRound } from 'lucide-react';
+import { KeyRound, DatabaseBackup } from 'lucide-react';
+import { DataSyncDialog } from './components/DataSyncDialog';
+import { useDataSync } from './hooks/useDataSync';
+import { BackupData, pickBackupData } from './services/backupService';
 import { getApiKey, MissingApiKeyError, KEY_CHANGED_EVENT, KEY_REQUIRED_EVENT } from './services/apiKeyStore';
 
 /**
@@ -128,10 +131,39 @@ export default function App() {
     };
   }, []);
 
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [storageFull, setStorageFull] = useState(false);
+
   // Persist state changes
   useEffect(() => {
-    localStorage.setItem('ai_scout_state_v1', JSON.stringify(state));
+    try {
+      localStorage.setItem('ai_scout_state_v1', JSON.stringify(state));
+      setStorageFull(false);
+    } catch {
+      // Browser-Speicher voll (ca. 5 MB) – Daten nicht verlieren, sondern auf Sicherung hinweisen
+      setStorageFull(true);
+    }
   }, [state]);
+
+  // Sicherung / Synchronisierung (Datei, Google Drive)
+  const backupData = useMemo(
+    () => pickBackupData(state),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.experts, state.curationVersion, state.reports, state.highlights, state.fastScans]
+  );
+  const applyBackup = useCallback((d: BackupData) => {
+    setState(prev => ({
+      ...prev,
+      experts: d.experts.length
+        ? applyCurationUpdates(d.experts, d.curationVersion || 1).map(migrateExpert)
+        : INITIAL_EXPERTS,
+      curationVersion: CURATION_VERSION,
+      reports: d.reports,
+      highlights: d.highlights,
+      fastScans: d.fastScans,
+    }));
+  }, []);
+  const sync = useDataSync(backupData, applyBackup);
   
   const handleUpdateExperts = (action: React.SetStateAction<Expert[]>) => {
     setState(prev => ({
@@ -222,6 +254,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-zinc-200">
       <Sidebar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} state={state} />
+      <DataSyncDialog isOpen={syncOpen} onClose={() => setSyncOpen(false)} sync={sync} />
       <ApiKeyDialog
         isOpen={keyDialog.open}
         reason={keyDialog.reason}
@@ -248,6 +281,20 @@ export default function App() {
             <div className="text-4xl md:text-5xl font-black editorial-headline tracking-tighter uppercase">
               AI Scout
             </div>
+            <div className="flex items-center gap-5">
+            <button
+              onClick={() => setSyncOpen(true)}
+              className="relative text-zinc-900 hover:text-zinc-600"
+              title="Daten & Sicherung"
+              aria-label="Daten und Sicherung"
+            >
+              <DatabaseBackup className="w-6 h-6" />
+              {sync.overall !== 'off' && (
+                <span
+                  className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${sync.overall === 'saved' ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                />
+              )}
+            </button>
             <button
               onClick={() => setKeyDialog({ open: true })}
               className="relative text-zinc-900 hover:text-zinc-600"
@@ -259,6 +306,7 @@ export default function App() {
                 className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${hasKey ? 'bg-emerald-500' : 'bg-amber-500'}`}
               />
             </button>
+            </div>
           </div>
         </div>
         <div className="border-t border-zinc-200">
@@ -289,6 +337,27 @@ export default function App() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-12">
+        {storageFull && (
+          <div className="mb-8 border-2 border-red-700 bg-red-50 px-5 py-4 text-sm text-red-900">
+            <strong>Der Browser-Speicher ist voll.</strong> Neue Daten bleiben nur bis zum Schließen des Tabs erhalten.{' '}
+            <button onClick={() => setSyncOpen(true)} className="font-bold underline underline-offset-4">
+              Jetzt sichern
+            </button>{' '}
+            und anschließend ältere Reports löschen.
+          </div>
+        )}
+
+        {sync.overall === 'off' && (state.reports.length > 0 || state.fastScans.length > 0 || state.highlights.length > 0) && (
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-2 border-zinc-200 px-5 py-3 text-sm text-zinc-700">
+            <span>Deine Recherchen sind bisher nur in diesem Browser gespeichert.</span>
+            <button
+              onClick={() => setSyncOpen(true)}
+              className="shrink-0 font-bold text-xs uppercase tracking-widest underline underline-offset-4 hover:text-zinc-900"
+            >
+              Sicherung einrichten
+            </button>
+          </div>
+        )}
         
         {/* Progress Overlay */}
         {state.isGenerating && (

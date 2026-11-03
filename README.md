@@ -12,6 +12,18 @@ AI Scout enthält **keinen** API-Key. Jede Person hinterlegt ihren eigenen Gemin
 - **Optional:** „Auf diesem Gerät merken“ speichert den Key dauerhaft im Browser. Das sollte nur auf eigenen, privaten Geräten genutzt werden. Die Verantwortung dafür liegt bei der nutzenden Person.
 - Empfehlung: In Google AI Studio ein Ausgabenlimit setzen.
 
+## Daten sichern und auf mehreren Geräten nutzen
+
+Recherchen, Markierungen und die Expertenliste liegen zunächst nur im Browser. Über das Symbol **Daten & Sicherung** (oben rechts) gibt es drei Wege:
+
+| Weg | Funktioniert auf | Hinweis |
+|---|---|---|
+| **Google Drive** | allen Geräten | speichert automatisch in `ai-scout-daten.json` im eigenen Drive; Einrichtung siehe [docs/google-drive-einrichtung.md](docs/google-drive-einrichtung.md) |
+| **Automatisch in Datei** | Chrome, Edge, Dia, Arc am Computer | Datei am besten in einen OneDrive-, Google-Drive- oder iCloud-Ordner legen |
+| **Manuelle Sicherung** | überall | Datei herunterladen und auf einem anderen Gerät einspielen |
+
+Weichen zwei Stände voneinander ab, gewinnt der neuere. Bevor ein neuerer Stand aus der Cloud die Daten im Browser ersetzt, fragt die App nach. Der API-Key wird nie mitgesichert.
+
 ## Lokal starten
 
 Voraussetzung: Node.js 20 oder neuer.
