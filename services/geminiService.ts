@@ -1,8 +1,10 @@
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { Expert, ExpertLink, ExpertLinkType, ExpertMilestone, Report, ReportItem, LinkStatus, FastScanResult } from '../types';
 
-// Initialize Gemini
-const getClient = () => new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { requireApiKey } from './apiKeyStore';
+
+// Initialize Gemini mit dem Key der nutzenden Person (Bring Your Own Key)
+const getClient = () => new GoogleGenAI({ apiKey: requireApiKey() });
 
 // WAV Header Helper
 function createWavHeader(sampleRate: number, numChannels: number, bitsPerSample: number, dataLength: number): Uint8Array {
