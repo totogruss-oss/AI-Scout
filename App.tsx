@@ -3,7 +3,7 @@ import { ExpertList } from './components/ExpertList';
 import { Newsletter } from './components/Newsletter';
 import { KnowledgeBase } from './components/KnowledgeBase';
 import { FastScanView } from './components/FastScanView';
-import { generateResearchReport, generateFastScan } from './services/geminiService';
+import { generateResearchReport, generateFastScan, isQuotaError } from './services/geminiService';
 import { Expert, Report, AppState, Highlight } from './types';
 import { ADDED_EXPERT_IDS, CURATION_VERSION, INITIAL_EXPERTS, REMOVED_EXPERT_IDS } from './constants';
 import { LEGACY_HANDLE_FIXES, LEGACY_IMAGE_URLS } from './legacyData';
@@ -210,7 +210,9 @@ export default function App() {
         progressMessage: ''
       }));
       if (!(e instanceof MissingApiKeyError)) {
-        alert("Es gab ein Problem bei der Recherche. Bitte überprüfe deinen API-Key (Schlüssel-Symbol oben rechts) oder versuche es später noch einmal.");
+        alert(isQuotaError(e)
+          ? "Das Kontingent deines API-Keys ist erschöpft oder umfasst die Google-Suche nicht. Prüfe in Google AI Studio (ai.dev/rate-limit) dein Kontingent – für die Suche ist in der Regel ein Key mit hinterlegter Abrechnung nötig."
+          : "Es gab ein Problem bei der Recherche. Bitte überprüfe deinen API-Key (Schlüssel-Symbol oben rechts) oder versuche es später noch einmal.");
       }
     }
   };
@@ -240,7 +242,9 @@ export default function App() {
         progressMessage: ''
       }));
       if (!(e instanceof MissingApiKeyError)) {
-        alert("Es gab ein Problem beim Fast Scan. Bitte überprüfe deinen API-Key (Schlüssel-Symbol oben rechts) oder versuche es später noch einmal.");
+        alert(isQuotaError(e)
+          ? "Das Kontingent deines API-Keys ist erschöpft oder umfasst die Google-Suche nicht. Prüfe in Google AI Studio (ai.dev/rate-limit) dein Kontingent – für die Suche ist in der Regel ein Key mit hinterlegter Abrechnung nötig."
+          : "Es gab ein Problem beim Fast Scan. Bitte überprüfe deinen API-Key (Schlüssel-Symbol oben rechts) oder versuche es später noch einmal.");
       }
     }
   };
@@ -373,7 +377,7 @@ export default function App() {
             <div className="mt-12 max-w-md text-center text-lg text-zinc-600 border-y-2 border-zinc-900 bg-white p-6 italic editorial-text">
               {state.generatingType === 'quick' 
                 ? `Der Agent scannt die neuesten Updates der ${state.experts.filter(e => e.active).length} Experten. Dies dauert ca. 10 Sekunden.`
-                : `Der Agent scannt Papers, Social Media und News der ${state.experts.filter(e => e.active).length} Experten. Dies kann bis zu 60 Sekunden dauern.`
+                : `Der Agent scannt Papers, Social Media und News der ${state.experts.filter(e => e.active).length} Experten. Das dauert etwa zwei bis drei Minuten.`
               }
             </div>
             <button 
@@ -414,7 +418,7 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className="text-lg font-black uppercase tracking-tight">Deep Research</h3>
-                  <p className="text-zinc-400 italic editorial-text text-sm">~60 Sekunden</p>
+                  <p className="text-zinc-400 italic editorial-text text-sm">ca. 2–3 Minuten</p>
                 </div>
               </button>
             </div>

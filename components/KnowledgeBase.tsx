@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { VerificationBadge, formatItemDate } from './VerificationBadge';
 import { Report, Expert, LinkStatus, Highlight } from '../types';
 import { Search, Filter, Calendar, ExternalLink, FileText, User, ChevronDown, TrendingUp, Tag, Lock, AlertTriangle, Clock, Sparkles, Send, Bookmark } from 'lucide-react';
 import { askAssistant, AssistantResponse, ChatMessage } from '../services/geminiService';
@@ -372,11 +373,12 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ reports, experts, 
                           <span className="text-zinc-300 hidden md:inline">•</span>
                           <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
                              <Calendar className="w-3.5 h-3.5" />
-                             {new Date(item.date).toLocaleDateString('de-DE')}
+                             {formatItemDate(item.date)}
                           </span>
                           <RelativeTimeBadge dateStr={item.date} />
                        </div>
                        <div className="flex items-center gap-2">
+                         <VerificationBadge level={item.verification} compact />
                          <StatusIcon status={item.linkStatus} />
                          <a 
                            href={item.sourceUrl} 

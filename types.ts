@@ -66,6 +66,39 @@ export interface Expert {
 
 export type LinkStatus = 'accessible' | 'paywall' | 'warning';
 
+/**
+ * Wie gut ein Berichtseintrag durch die Websuche gestützt ist.
+ * Die Einstufung trifft nicht das Modell, sondern der Abgleich mit den Quellen,
+ * die die Suche tatsächlich geliefert hat (siehe services/reportPipeline.ts).
+ */
+export type Verification = 'belegt' | 'teilweise' | 'unbelegt';
+
+/** Verhältnis der Person zur Quelle: selbst verfasst, Auftritt/Interview oder Bericht Dritter. */
+export type Attribution = 'eigen' | 'auftritt' | 'bericht';
+
+/** Eine Quelle, die die Suche geliefert hat (Adresse nicht vom Modell geschrieben). */
+export interface SourceRef {
+  title: string;
+  uri: string;
+}
+
+/** Kennzahlen zur Entstehung eines Berichts – macht sichtbar, was geprüft und was aussortiert wurde. */
+export interface ReportQuality {
+  windowDays: number;
+  /** Anzahl der Personen, zu denen gesucht wurde. */
+  searched: number;
+  /** Personen ohne Fund im Zeitraum. */
+  withoutFindings: string[];
+  /** Personen, deren Suchlauf fehlgeschlagen ist – „kein Fund" heißt hier NICHT „nichts veröffentlicht". */
+  notChecked: string[];
+  belegt: number;
+  teilweise: number;
+  unbelegt: number;
+  droppedTooOld: number;
+  droppedNoDate: number;
+  droppedOther: number;
+}
+
 export interface ReportItem {
   headline: string;
   summary: string;
@@ -76,6 +109,11 @@ export interface ReportItem {
   date: string;
   tags: string[]; // New field for categorization
   linkStatus?: LinkStatus; // Indicates if link is likely behind paywall or verified
+  /** Fehlt bei Berichten, die vor der Quellenprüfung entstanden sind. */
+  verification?: Verification;
+  /** Suchquellen, die genau diesen Eintrag stützen. */
+  groundedSources?: SourceRef[];
+  attribution?: Attribution;
 }
 
 export interface Report {
@@ -86,6 +124,8 @@ export interface Report {
   items: ReportItem[];
   actionSteps: string[];
   rawMarkdown: string; 
+  /** Fehlt bei Berichten, die vor der Quellenprüfung entstanden sind. */
+  quality?: ReportQuality;
 }
 
 export interface Highlight {
