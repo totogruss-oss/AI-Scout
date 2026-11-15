@@ -48,6 +48,7 @@ beforeEach(() => {
   // Erreichbarkeitsprüfung: Abrufdienst antwortet nicht -> Status bleibt offen.
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
   vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'info').mockImplementation(() => {});
 });
 
 describe('generateResearchReport', () => {
@@ -129,6 +130,26 @@ describe('generateResearchReport', () => {
     expect(isQuotaError(error)).toBe(true);
     // Je Gruppe ein Versuch plus zwei Wiederholungen.
     expect(generateContent).toHaveBeenCalledTimes(6);
+  });
+
+  it('versucht nach erschöpftem Kontingent keine weiteren Gruppen mehr', async () => {
+    vi.useFakeTimers();
+    const many = ['A', 'B', 'C', 'D'].map((name, i) => expert(`m${i}`, `Person ${name}`, (['Praxis & Engineering', 'Kritik & Ethik', 'Grundlagenforschung', 'Bildung & DACH'] as const)[i]));
+    generateContent.mockImplementation(async (request: any) => {
+      if (!isSearch(request)) return synthesisResponse;
+      if (request.contents.includes('Person A')) return searchResponse(finding('Person A', daysAgo(1), 'https://a.example/1'), 'a.example');
+      throw quotaError();
+    });
+
+    const outcome = generateResearchReport(many, () => {});
+    await vi.runAllTimersAsync();
+    const report = await outcome;
+    vi.useRealTimers();
+
+    expect(report.quality?.notChecked.sort()).toEqual(['Person B', 'Person C', 'Person D']);
+    // Zwei Suchläufe laufen gleichzeitig: A klappt (1), B und C scheitern nach je zwei
+    // Wiederholungen (3 + 3), D wird danach nicht mehr versucht, dazu die Zusammenfassung (1).
+    expect(generateContent).toHaveBeenCalledTimes(8);
   });
 
   it('bricht ohne aktive Personen sofort ab', async () => {

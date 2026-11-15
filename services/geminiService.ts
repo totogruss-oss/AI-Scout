@@ -301,7 +301,12 @@ const searchBatch = async (ai: GoogleGenAI, batch: ExpertBatch, today: Date): Pr
     },
   }));
   const grounding = response.candidates?.[0]?.groundingMetadata as GroundingInfo | undefined;
-  return processBatchResponse(response.text || '', grounding, batch, today);
+  const result = processBatchResponse(response.text || '', grounding, batch, today);
+  // Hilft beim Nachvollziehen in der Browser-Konsole, falls Einstufungen überraschen.
+  console.info(`[AI Scout] ${batch.label}: ${result.items.length} Einträge, ` +
+    `${grounding?.groundingChunks?.length ?? 0} Suchtreffer, ${grounding?.groundingSupports?.length ?? 0} belegte Textstellen`,
+    { treffer: grounding?.groundingChunks?.map(c => c.web?.title), einstufung: result.items.map(i => i.verification), aussortiert: result.dropped });
+  return result;
 };
 
 /** Zweiter Schritt: Einordnung nur auf Basis der geprüften Funde – ohne Suche, damit nichts Neues dazukommt. */
@@ -358,6 +363,8 @@ export const generateResearchReport = async (
   const queue = [...batches];
   const worker = async () => {
     for (let batch = queue.shift(); batch; batch = queue.shift()) {
+      // Ist das Kontingent erschöpft, bringen weitere Versuche nur Wartezeit.
+      if (isQuotaError(lastError)) { failed.push(...batch.experts); done++; continue; }
       try {
         results.push(await searchBatch(ai, batch, today));
         searched.push(...batch.experts);
