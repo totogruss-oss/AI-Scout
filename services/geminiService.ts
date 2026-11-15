@@ -227,7 +227,7 @@ export const generateFastScan = async (onProgress: (msg: string) => void): Promi
   const ai = getClient();
   onProgress("Starte Fast Scan mit Google Search...");
 
-  const prompt = `Erstelle einen schnellen, prägnanten Überblick über die wichtigsten KI-News und Entwicklungen der letzten 24-48 Stunden. 
+  const prompt = `Erstelle einen schnellen, prägnanten Überblick über die wichtigsten KI-News und Entwicklungen der letzten 24-48 Stunden. Heute ist der ${new Date().toLocaleDateString("de-DE")}. 
 Fokussiere dich auf bahnbrechende Modelle, wichtige Unternehmensentscheidungen (OpenAI, Google, Anthropic, Meta, etc.), neue Tools oder relevante Regulierungen.
 Formatiere die Antwort in Markdown mit einer kurzen Einleitung und Bulletpoints für die wichtigsten Meldungen.`;
 

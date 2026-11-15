@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Report, LinkStatus, ReportItem, Highlight } from '../types';
 import { Share2, Copy, Calendar, Newspaper, Youtube, FileText, MessageSquare, Mic, Link as LinkIcon, Lock, AlertTriangle, Download, Loader2, Volume2, Play, Pause, Square, Volume1, VolumeX, BookmarkPlus } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { getReportAudioUrl } from '../services/geminiService';
 import { VerificationBadge, QualitySummary, attributionLabel, formatItemDate } from './VerificationBadge';
 
@@ -31,7 +31,7 @@ const getSourceIcon = (type: string) => {
 const ValidationBadge: React.FC<{ status?: LinkStatus }> = ({ status }) => {
   if (status === 'paywall') {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200" title="Diese Quelle erfordert möglicherweise ein kostenpflichtiges Abonnement.">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200" title="Diese Quelle erfordert möglicherweise ein kostenpflichtiges Abonnement.">
         <Lock className="w-3 h-3" />
         PAYWALL MÖGLICH
       </span>
@@ -39,7 +39,7 @@ const ValidationBadge: React.FC<{ status?: LinkStatus }> = ({ status }) => {
   }
   if (status === 'warning') {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100" title="Die Seite wurde nicht gefunden (Fehler 404 oder 410).">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-red-50 text-red-600 border border-red-100" title="Die Seite wurde nicht gefunden (Fehler 404 oder 410).">
         <AlertTriangle className="w-3 h-3" />
         NICHT ERREICHBAR
       </span>
@@ -47,7 +47,7 @@ const ValidationBadge: React.FC<{ status?: LinkStatus }> = ({ status }) => {
   }
   if (status === 'accessible') {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100" title="Die Seite war beim Erstellen des Berichts erreichbar. Das sagt nichts über den Inhalt aus.">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100" title="Die Seite war beim Erstellen des Berichts erreichbar. Das sagt nichts über den Inhalt aus.">
         <LinkIcon className="w-3 h-3" />
         ERREICHBAR
       </span>
@@ -237,8 +237,9 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
     setIsExporting(true);
     try {
       const element = contentRef.current;
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false });
-      const imgData = canvas.toDataURL('image/png');
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+      // JPEG statt PNG: gleiche Lesbarkeit, aber ein Bruchteil der Dateigröße (per Mail versendbar).
+      const imgData = canvas.toDataURL('image/jpeg', 0.85);
       const pdfWidth = 210;
       const pdfHeight = 297;
       const imgPropsWidth = pdfWidth;
@@ -248,13 +249,13 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
       let heightLeft = imgPropsHeight;
       let position = 0;
 
-      doc.addImage(imgData, 'PNG', 0, position, imgPropsWidth, imgPropsHeight);
+      doc.addImage(imgData, 'JPEG', 0, position, imgPropsWidth, imgPropsHeight);
       heightLeft -= pdfHeight;
 
       while (heightLeft >= 0) {
         position = heightLeft - imgPropsHeight;
         doc.addPage();
-        doc.addImage(imgData, 'PNG', 0, position, imgPropsWidth, imgPropsHeight);
+        doc.addImage(imgData, 'JPEG', 0, position, imgPropsWidth, imgPropsHeight);
         heightLeft -= pdfHeight;
       }
 
@@ -324,7 +325,7 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
                         <select 
                         value={selectedVoice}
                         onChange={(e) => setSelectedVoice(e.target.value)}
-                        className="bg-transparent text-xs font-bold text-zinc-600 py-1 pl-1 pr-1 focus:outline-none cursor-pointer border-none"
+                        className="bg-transparent text-xs font-bold text-zinc-600 py-1 pl-1 pr-1 focus:outline-hidden cursor-pointer border-none"
                         >
                         <option value="Fenrir">Fenrir (Tief)</option>
                         <option value="Charon">Charon (Tief)</option>

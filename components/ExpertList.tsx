@@ -250,7 +250,7 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
             <input
               type="text"
               placeholder="Name (z.B. Lex Fridman)"
-              className="flex-1 px-4 py-3 bg-white border border-zinc-300 rounded-none text-zinc-900 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 transition-all font-sans"
+              className="flex-1 px-4 py-3 bg-white border border-zinc-300 rounded-none text-zinc-900 placeholder-zinc-500 focus:outline-hidden focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 transition-all font-sans"
               value={newExpertName}
               onChange={(e) => setNewExpertName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addExpert()}
@@ -258,14 +258,14 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
             <input
               type="text"
               placeholder="Rolle (Optional)"
-              className="flex-1 px-4 py-3 bg-white border border-zinc-300 rounded-none text-zinc-900 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 transition-all font-sans"
+              className="flex-1 px-4 py-3 bg-white border border-zinc-300 rounded-none text-zinc-900 placeholder-zinc-500 focus:outline-hidden focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 transition-all font-sans"
               value={newExpertRole}
               onChange={(e) => setNewExpertRole(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addExpert()}
             />
             <button 
               onClick={addExpert}
-              className="bg-zinc-900 hover:bg-zinc-800 text-white px-6 py-3 rounded-none font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all focus:outline-none shrink-0"
+              className="bg-zinc-900 hover:bg-zinc-800 text-white px-6 py-3 rounded-none font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-all focus:outline-hidden shrink-0"
             >
               <Plus className="w-4 h-4" />
               Hinzufügen
@@ -278,7 +278,7 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
         <input
           type="text"
           placeholder="Expert:innen, Rollen oder Themen durchsuchen..."
-          className="w-full px-4 py-3 bg-white border-2 border-zinc-200 rounded-none text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 transition-all font-sans text-lg"
+          className="w-full px-4 py-3 bg-white border-2 border-zinc-200 rounded-none text-zinc-900 placeholder-zinc-400 focus:outline-hidden focus:border-zinc-900 transition-all font-sans text-lg"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -312,7 +312,7 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
             className={`flex items-center justify-between p-5 border-l-4 transition-all duration-200 cursor-pointer ${expert.active ? 'border-zinc-900 bg-zinc-50 hover:bg-zinc-100' : 'border-zinc-200 bg-white opacity-60 hover:opacity-100 hover:bg-zinc-50'}`}
           >
             <div className="flex items-center gap-6">
-              <button onClick={(e) => toggleActive(expert.id, e)} className="text-zinc-400 hover:text-zinc-900 transition-colors focus:outline-none shrink-0">
+              <button onClick={(e) => toggleActive(expert.id, e)} className="text-zinc-400 hover:text-zinc-900 transition-colors focus:outline-hidden shrink-0">
                 {expert.active ? <CheckCircle className="w-6 h-6 text-zinc-900" /> : <Circle className="w-6 h-6" />}
               </button>
               
@@ -364,7 +364,7 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
                 )}
                 KI-Dossier
               </button>
-              <button onClick={(e) => removeExpert(expert.id, e)} className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-none">
+              <button onClick={(e) => removeExpert(expert.id, e)} className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors focus:outline-hidden">
                 <Trash2 className="w-5 h-5" />
               </button>
             </div>
@@ -389,7 +389,7 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
 
       {/* Confirm/Alert Modal */}
       {confirmDialog && (
-        <div className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-[300] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-zinc-900/50 backdrop-blur-xs z-[300] flex items-center justify-center p-4">
           <div className="bg-white border-2 border-zinc-900 w-full max-w-md p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             <h3 className="text-xl font-bold uppercase tracking-tight text-zinc-900 mb-4">
               {confirmDialog.isAlert ? 'Hinweis' : 'Bestätigung'}

@@ -44,6 +44,16 @@ Recherchen, Markierungen und die Expertenliste liegen zunächst nur im Browser. 
 
 Weichen zwei Stände voneinander ab, gewinnt der neuere. Bevor ein neuerer Stand aus der Cloud die Daten im Browser ersetzt, fragt die App nach. Der API-Key wird nie mitgesichert.
 
+## Als App auf dem Handy installieren
+
+AI Scout lässt sich wie eine App auf den Startbildschirm legen, ohne App-Store:
+
+- **Android (Chrome):** Seite öffnen → Menü (drei Punkte) → **App installieren** bzw. **Zum Startbildschirm hinzufügen**.
+- **iPhone/iPad (Safari):** Teilen-Symbol → **Zum Home-Bildschirm**.
+- **Computer (Chrome, Edge, Dia, Arc):** Installieren-Symbol rechts in der Adresszeile.
+
+Die installierte App nutzt dieselben Daten wie die Seite im Browser desselben Geräts. Für denselben Stand auf mehreren Geräten die Sicherung über Google Drive einrichten (siehe oben). Der API-Key muss auf jedem Gerät einmal hinterlegt werden. Die Oberfläche öffnet sich auch ohne Verbindung; Recherchen brauchen Internet.
+
 ## Lokal starten
 
 Voraussetzung: Node.js 20 oder neuer.

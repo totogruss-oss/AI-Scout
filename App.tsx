@@ -315,7 +315,7 @@ export default function App() {
         </div>
         <div className="border-t border-zinc-200">
           <div className="max-w-7xl mx-auto px-4">
-            <nav className="flex justify-center gap-8 py-3 overflow-x-auto">
+            <nav className="flex justify-start sm:justify-center gap-4 sm:gap-8 py-3 overflow-x-auto">
               <button 
                 onClick={() => setActiveTab('dashboard')} 
                 className={`text-xs uppercase tracking-widest font-bold whitespace-nowrap transition-colors ${activeTab === 'dashboard' ? 'text-zinc-900 border-b-2 border-zinc-900 pb-1' : 'text-zinc-500 hover:text-zinc-900 pb-1'}`}

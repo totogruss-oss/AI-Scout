@@ -31,7 +31,7 @@ export const VerificationBadge: React.FC<{ level?: Verification; compact?: boole
     return <span title={`${label}: ${hint}`} className={`inline-flex p-1 border ${style}`}><Icon className="w-3 h-3" /></span>;
   }
   return (
-    <span title={hint} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border ${style}`}>
+    <span title={hint} className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-bold uppercase border ${style}`}>
       <Icon className="w-3 h-3" />
       {label}
     </span>
