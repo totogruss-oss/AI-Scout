@@ -48,7 +48,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['Machine Learning', 'AI Education', 'Agentic Workflows', 'Business Applications'],
     twitterHandle: '@AndrewYNg',
     active: true,
-    wikipediaTitle: 'Andrew_Ng', wikipediaLang: 'en',
+    wikidataId: 'Q2846695', wikipediaTitle: 'Andrew_Ng', wikipediaLang: 'en',
     whyFollow: 'Übersetzt Forschung in praktische Anwendung und Weiterbildung; sein Newsletter „The Batch" ist ein verlässlicher Wochenüberblick.',
     primaryChannels: ['The Batch (Newsletter)', 'X', 'LinkedIn'],
     links: [
@@ -66,7 +66,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['Deep Learning', 'Neural Networks', 'AI Safety', 'Risks'],
     twitterHandle: '@geoffreyhinton',
     active: true,
-    wikipediaTitle: 'Geoffrey_Hinton', wikipediaLang: 'en',
+    wikidataId: 'Q92894', wikipediaTitle: 'Geoffrey_Hinton', wikipediaLang: 'en',
     whyFollow: 'Mitbegründer des Deep Learning, seit 2023 eine der lautesten Stimmen für KI-Risiken – hohes öffentliches Gewicht.',
     primaryChannels: ['Interviews & Vorträge', 'X'],
     links: [
@@ -83,7 +83,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['World Models', 'Computer Vision', 'Open Source AI', 'AGI-Diskurs'],
     twitterHandle: '@ylecun',
     active: true,
-    wikipediaTitle: 'Yann_LeCun', wikipediaLang: 'en',
+    wikidataId: 'Q3571662', wikipediaTitle: 'Yann_LeCun', wikipediaLang: 'en',
     whyFollow: 'Prominentester Gegenpol zur „LLMs führen zu AGI"-These; hat Meta Ende 2025 verlassen und baut mit AMI Labs Weltmodelle.',
     primaryChannels: ['X', 'LinkedIn', 'Threads'],
     links: [
@@ -100,7 +100,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['Computer Vision', 'Spatial Intelligence', 'Human-Centered AI', 'Education'],
     twitterHandle: '@drfeifei',
     active: true,
-    wikipediaTitle: 'Fei-Fei_Li', wikipediaLang: 'en',
+    wikidataId: 'Q18686107', wikipediaTitle: 'Fei-Fei_Li', wikipediaLang: 'en',
     whyFollow: 'Schöpferin von ImageNet, heute Treiberin von „Spatial Intelligence" und menschenzentrierter KI.',
     primaryChannels: ['X', 'Vorträge'],
     links: [
@@ -117,7 +117,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['Gemini', 'AlphaFold', 'AI for Science', 'AGI'],
     twitterHandle: '@demishassabis',
     active: true,
-    wikipediaTitle: 'Demis_Hassabis', wikipediaLang: 'en',
+    wikidataId: 'Q3022141', wikipediaTitle: 'Demis_Hassabis', wikipediaLang: 'en',
     whyFollow: 'Leitet eines der drei führenden Frontier-Labs – seine Aussagen sind Frühindikatoren für Googles KI-Strategie.',
     primaryChannels: ['X', 'Interviews'],
     links: [
@@ -134,7 +134,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['LLMs', 'AI Education', 'Software 3.0', 'AI Agents'],
     twitterHandle: '@karpathy',
     active: true,
-    wikipediaTitle: 'Andrej_Karpathy', wikipediaLang: 'en',
+    wikidataId: 'Q56037405', wikipediaTitle: 'Andrej_Karpathy', wikipediaLang: 'en',
     whyFollow: 'Der beste Erklärer der LLM-Welt; prägt Begriffe („Vibe Coding") und baut mit Eureka Labs KI-native Bildung.',
     primaryChannels: ['X', 'YouTube', 'GitHub'],
     links: [
@@ -152,7 +152,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     category: 'Sicherheit & Governance',
     topics: ['Deep Learning', 'AI Safety', 'International AI Safety Report', 'Governance'],
     active: true,
-    wikipediaTitle: 'Yoshua_Bengio', wikipediaLang: 'en',
+    wikidataId: 'Q3572699', wikipediaTitle: 'Yoshua_Bengio', wikipediaLang: 'en',
     whyFollow: 'Leitet den International AI Safety Report – die wissenschaftlich fundierteste Stimme der Sicherheitsdebatte.',
     primaryChannels: ['Blog', 'Reports', 'Interviews'],
     links: [
@@ -168,7 +168,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['Decision Intelligence', 'AI in Organizations', 'Data Literacy'],
     twitterHandle: '@quaesita',
     active: true,
-    wikipediaTitle: 'Cassie_Kozyrkov', wikipediaLang: 'en',
+    wikidataId: 'Q81667773', wikipediaTitle: 'Cassie_Kozyrkov', wikipediaLang: 'en',
     whyFollow: 'Erklärt, wie Organisationen gute Entscheidungen mit KI treffen – nah an Schulleitungs- und Management-Fragen.',
     primaryChannels: ['LinkedIn', 'Substack', 'Keynotes'],
     links: [
@@ -184,7 +184,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['Copilot', 'Consumer AI', 'Superintelligence', 'Policy'],
     twitterHandle: '@mustafasuleyman',
     active: true,
-    wikipediaTitle: 'Mustafa_Suleyman', wikipediaLang: 'en',
+    wikidataId: 'Q16847797', wikipediaTitle: 'Mustafa_Suleyman', wikipediaLang: 'en',
     whyFollow: 'Verantwortet Microsofts Consumer-KI (Copilot) – direkt relevant für MS-365-Schulen.',
     primaryChannels: ['X', 'LinkedIn', 'Essays'],
     links: [
@@ -199,7 +199,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     category: 'Bildung & DACH',
     topics: ['Generative AI', 'Hochschulbildung', 'Prüfungskultur', 'Schreiben mit KI'],
     active: true,
-    wikipediaTitle: 'Doris_Weßels', wikipediaLang: 'de',
+    wikidataId: 'Q116926796', wikipediaTitle: 'Doris_Weßels', wikipediaLang: 'de',
     whyFollow: 'Eine der prägenden Stimmen zu generativer KI in Bildung und Prüfungskultur im deutschsprachigen Raum.',
     primaryChannels: ['LinkedIn', 'Vorträge', 'Fachartikel'],
     links: [
@@ -216,7 +216,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['AI Agents', 'Open Source', 'Agentic Coding', 'Practical Implementation'],
     twitterHandle: '@steipete',
     active: true,
-    wikipediaTitle: 'Peter_Steinberger', wikipediaLang: 'en',
+    // Kein Wikipedia-Titel: Unter diesem Namen führt Wikipedia einen gleichnamigen Philosophen.
     whyFollow: 'Schöpfer von OpenClaw, seit Februar 2026 bei OpenAI für Personal Agents – zeigt sehr konkret, was Agenten heute können.',
     primaryChannels: ['X', 'Blog', 'GitHub'],
     links: [
@@ -260,7 +260,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     category: 'Frontier-Labs & Industrie',
     topics: ['AI Safety', 'Claude', 'Responsible Scaling', 'Policy'],
     active: true,
-    wikipediaTitle: 'Dario_Amodei', wikipediaLang: 'en',
+    wikidataId: 'Q103335665', wikipediaTitle: 'Dario_Amodei', wikipediaLang: 'en',
     whyFollow: 'Leitet ein Frontier-Lab mit Sicherheitsfokus; seine langen Essays setzen regelmäßig die Agenda der Debatte.',
     primaryChannels: ['Essays', 'Interviews'],
     links: [
@@ -275,7 +275,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     category: 'Sicherheit & Governance',
     topics: ['AI Safety', 'AI Governance', 'Value Alignment', 'Long-term Risks'],
     active: true,
-    wikipediaTitle: 'Stuart_J._Russell', wikipediaLang: 'en',
+    wikidataId: 'Q3656334', wikipediaTitle: 'Stuart_J._Russell', wikipediaLang: 'en',
     whyFollow: 'Autor des KI-Standardlehrbuchs; argumentiert grundsätzlich zur Kontrollierbarkeit von KI.',
     primaryChannels: ['Vorträge', 'Interviews'],
     links: [
@@ -291,7 +291,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['AI Bias', 'Fairness', 'Ethics', 'Power Structures'],
     twitterHandle: '@timnitGebru',
     active: true,
-    wikipediaTitle: 'Timnit_Gebru', wikipediaLang: 'en',
+    wikidataId: 'Q59753117', wikipediaTitle: 'Timnit_Gebru', wikipediaLang: 'en',
     whyFollow: 'Zentrale Kritikerin von Machtkonzentration und Bias – wichtiges Korrektiv zum Industrie-Narrativ.',
     primaryChannels: ['Bluesky / Mastodon', 'DAIR-Publikationen'],
     links: [
@@ -307,7 +307,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['AI Limitations', 'Neurosymbolic AI', 'Robustness', 'Regulation'],
     twitterHandle: '@GaryMarcus',
     active: true,
-    wikipediaTitle: 'Gary_Marcus', wikipediaLang: 'en',
+    wikidataId: 'Q3348133', wikipediaTitle: 'Gary_Marcus', wikipediaLang: 'en',
     whyFollow: 'Lautester Skeptiker des LLM-Hypes – hilft, Versprechen kritisch einzuordnen.',
     primaryChannels: ['Substack', 'X'],
     links: [
@@ -324,7 +324,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['KI in Bildung', 'KI & Arbeit', 'Prompting', 'Empirische Studien'],
     twitterHandle: '@emollick',
     active: true,
-    wikipediaTitle: 'Ethan_Mollick', wikipediaLang: 'en',
+    wikidataId: 'Q109621287', wikipediaTitle: 'Ethan_Mollick', wikipediaLang: 'en',
     whyFollow: 'Forschungsbasierte, alltagsnahe Einordnung, was KI für Lernen, Lehren und Arbeiten konkret bedeutet – direkt übertragbar auf Schule.',
     primaryChannels: ['One Useful Thing (Substack)', 'X', 'LinkedIn'],
     links: [
@@ -341,7 +341,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['LLM Engineering', 'Prompt Injection', 'Open Source', 'Tool-Tests'],
     twitterHandle: '@simonw',
     active: true,
-    wikipediaTitle: 'Simon_Willison', wikipediaLang: 'en',
+    wikidataId: 'Q7520062', wikipediaTitle: 'Simon_Willison', wikipediaLang: 'en',
     whyFollow: 'Testet neue Modelle und Tools fast täglich und nüchtern – inklusive Sicherheitsrisiken wie Prompt Injection.',
     primaryChannels: ['Blog', 'Newsletter', 'X / Bluesky / Mastodon'],
     links: [
@@ -359,7 +359,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['Forschungsüberblick', 'AI Policy', 'Frontier Models', 'Governance'],
     twitterHandle: '@jackclarkSF',
     active: true,
-    wikipediaTitle: 'Jack_Clark_(AI_policy_expert)', wikipediaLang: 'en',
+    // Kein Wikipedia-Titel: Der frühere Titel leitet auf den Artikel über Anthropic um.
     whyFollow: 'Sein wöchentlicher Newsletter „Import AI" ist einer der besten Filter für relevante KI-Forschung und Politik.',
     primaryChannels: ['Import AI (Newsletter)', 'X'],
     links: [
@@ -377,7 +377,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     topics: ['AI as Normal Technology', 'AI Snake Oil', 'Evaluation', 'Gesellschaftliche Folgen'],
     twitterHandle: '@random_walker',
     active: true,
-    wikipediaTitle: 'Arvind_Narayanan', wikipediaLang: 'en',
+    wikidataId: 'Q16442100', wikipediaTitle: 'Arvind_Narayanan', wikipediaLang: 'en',
     whyFollow: 'Evidenzbasierte Skepsis gegenüber Hype UND Untergangsszenarien („AI as Normal Technology") – mit Sayash Kapoor.',
     primaryChannels: ['Newsletter (mit Sayash Kapoor)', 'X', 'Bluesky'],
     links: [
@@ -422,7 +422,7 @@ export const INITIAL_EXPERTS: Expert[] = [
     category: 'Kritik & Ethik',
     topics: ['Algorithmische Verantwortung', 'Fairness', 'Sozioinformatik', 'KI & Gesellschaft'],
     active: true,
-    wikipediaTitle: 'Katharina_Zweig', wikipediaLang: 'de',
+    wikidataId: 'Q25354294', wikipediaTitle: 'Katharina_Zweig', wikipediaLang: 'de',
     whyFollow: 'Erklärt verständlich, wo KI-Entscheidungen gesellschaftlich problematisch werden – stark verwertbar für GL und Medienbildung.',
     primaryChannels: ['Bücher', 'Vorträge', 'Interviews'],
     links: [],

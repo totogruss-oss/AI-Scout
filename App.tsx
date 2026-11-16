@@ -6,7 +6,7 @@ import { FastScanView } from './components/FastScanView';
 import { generateResearchReport, generateFastScan, isQuotaError } from './services/geminiService';
 import { Expert, Report, AppState, Highlight } from './types';
 import { ADDED_EXPERT_IDS, CURATION_VERSION, INITIAL_EXPERTS, REMOVED_EXPERT_IDS } from './constants';
-import { LEGACY_HANDLE_FIXES, LEGACY_IMAGE_URLS } from './legacyData';
+import { LEGACY_HANDLE_FIXES, LEGACY_IMAGE_URLS, LEGACY_WRONG_WIKIDATA_IDS, LEGACY_WRONG_WIKIPEDIA_TITLES } from './legacyData';
 import { mergeLinks } from './services/profileService';
 import { Sparkles, CalendarClock, Play, Menu, User, Zap, Bookmark, ExternalLink, Calendar } from 'lucide-react';
 import { RelativeTimeBadge } from './components/RelativeTimeBadge';
@@ -23,7 +23,7 @@ import { getApiKey, MissingApiKeyError, KEY_CHANGED_EVENT, KEY_REQUIRED_EVENT } 
  * Änderungen zu verlieren: kaputte Alt-Bilder und falsche Handles werden
  * bereinigt, neue kuratierte Felder (Links, Kategorie, …) ergänzt.
  */
-const migrateExpert = (stored: Expert): Expert => {
+export const migrateExpert = (stored: Expert): Expert => {
   let expert: Expert = { ...stored };
 
   if (expert.imageUrl && LEGACY_IMAGE_URLS.has(expert.imageUrl)) {
@@ -33,6 +33,21 @@ const migrateExpert = (stored: Expert): Expert => {
   }
   if (expert.twitterHandle && expert.twitterHandle in LEGACY_HANDLE_FIXES) {
     expert.twitterHandle = LEGACY_HANDLE_FIXES[expert.twitterHandle];
+  }
+
+  // Falsch zugeordnete Wikipedia-/Wikidata-Einträge samt daraus übernommenem Text und Bild entfernen.
+  const wrongSource = (expert.wikidataId && LEGACY_WRONG_WIKIDATA_IDS.has(expert.wikidataId))
+    || (expert.wikipediaTitle && LEGACY_WRONG_WIKIPEDIA_TITLES.has(expert.wikipediaTitle.replace(/ /g, '_')));
+  if (wrongSource) {
+    expert.wikidataId = undefined;
+    expert.wikipediaTitle = undefined;
+    expert.wikipediaLang = undefined;
+    expert.enrichedAt = undefined;
+    expert.links = expert.links?.filter(l => l.origin !== 'wikidata');
+    if (expert.bioOrigin === 'wikipedia') { expert.bio = undefined; expert.bioOrigin = undefined; }
+    if (expert.imageOrigin === 'wikidata' || expert.imageOrigin === 'wikipedia') {
+      expert.imageUrl = undefined; expert.imageOrigin = undefined; expert.imageCredit = undefined;
+    }
   }
 
   const curated = INITIAL_EXPERTS.find(e => e.id === expert.id || e.name === expert.name);

@@ -109,13 +109,44 @@ interface WikiSummary {
   type?: string;
 }
 
+/** Die Datenquelle war nicht erreichbar oder hat die Abfrage gedrosselt – das ist KEIN „nicht gefunden". */
+export class LookupUnavailableError extends Error {
+  constructor(url: string, cause: string) {
+    super(`Abfrage nicht möglich (${cause}): ${url}`);
+    this.name = 'LookupUnavailableError';
+  }
+}
+
+const RETRY_DELAYS_MS = [1500, 4000];
+const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Holt JSON. Rückgabe null heißt „gibt es nicht" (z. B. 404).
+ * Drosselung (429), Serverfehler und Netzprobleme werden zweimal wiederholt und
+ * führen danach zu einem Fehler – sonst würde eine gedrosselte Abfrage wie ein
+ * fehlender Eintrag aussehen und das Profil bliebe dauerhaft ohne Bild.
+ */
 const fetchJson = async <T,>(url: string): Promise<T | null> => {
-  try {
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
+  for (let attempt = 0; ; attempt++) {
+    let cause: string;
+    try {
+      const res = await fetch(url, { headers: { Accept: 'application/json' } });
+      if (res.ok) return (await res.json()) as T;
+      if (res.status !== 429 && res.status < 500) return null;
+      cause = `HTTP ${res.status}`;
+      if (attempt < RETRY_DELAYS_MS.length) {
+        const retryAfter = Number(res.headers.get('Retry-After'));
+        await pause(retryAfter > 0 && retryAfter <= 10 ? retryAfter * 1000 : RETRY_DELAYS_MS[attempt]);
+        continue;
+      }
+    } catch (error) {
+      cause = error instanceof Error ? error.message : 'Netzwerkfehler';
+      if (attempt < RETRY_DELAYS_MS.length) {
+        await pause(RETRY_DELAYS_MS[attempt]);
+        continue;
+      }
+    }
+    throw new LookupUnavailableError(url, cause);
   }
 };
 
@@ -267,6 +298,12 @@ export const fetchOpenDataProfile = async (expert: Expert): Promise<OpenDataProf
   if (!entity && expert.wikipediaTitle) {
     seedSummary = await fetchWikiSummary(expert.wikipediaLang || 'en', expert.wikipediaTitle);
     if (seedSummary?.wikibase_item) entity = await fetchWikidataEntity(seedSummary.wikibase_item);
+    // Leitet der Titel auf einen Artikel über etwas anderes um (z. B. auf die Firma
+    // der Person), würden sonst deren Text und Logo im Profil landen.
+    if (entity && !isHuman(entity)) {
+      entity = null;
+      seedSummary = null;
+    }
   }
   if (!entity) {
     entity = await searchWikidataPerson(expert.name);
@@ -352,6 +389,21 @@ export const applyOpenDataProfile = (expert: Expert, data: OpenDataProfile): Exp
     links: keepLinks ? mergeLinks(expert.links, []) : mergeLinks(expert.links, data.links),
     enrichedAt: new Date().toISOString(),
   };
+};
+
+const RETRY_WITHOUT_IMAGE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Soll das Profil beim Öffnen der App (erneut) abgeglichen werden?
+ * Ja, wenn es noch nie abgeglichen wurde – oder wenn weiterhin ein Bild fehlt
+ * und der letzte Versuch mindestens eine Woche her ist (neue Bilder kommen bei
+ * Wikimedia laufend hinzu).
+ */
+export const needsEnrichment = (expert: Expert, now = Date.now()): boolean => {
+  if (!expert.enrichedAt) return true;
+  if (expert.imageUrl || expert.manualOverrides?.imageUrl) return false;
+  const last = new Date(expert.enrichedAt).getTime();
+  return isNaN(last) || now - last >= RETRY_WITHOUT_IMAGE_AFTER_MS;
 };
 
 /** Zählt, wie oft eine Person in gespeicherten Reports vorkommt (Ertrag pro Quelle). */
