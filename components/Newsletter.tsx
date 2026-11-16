@@ -2,8 +2,9 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Report, LinkStatus, ReportItem, Highlight } from '../types';
 import { Share2, Copy, Calendar, Newspaper, Youtube, FileText, MessageSquare, Mic, Link as LinkIcon, Lock, AlertTriangle, Download, Loader2, Volume2, Play, Pause, Square, Volume1, VolumeX, BookmarkPlus } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import { getReportAudioUrl } from '../services/geminiService';
+import { VerificationBadge, QualitySummary, attributionLabel, formatItemDate } from './VerificationBadge';
 
 interface NewsletterProps {
   report: Report;
@@ -30,7 +31,7 @@ const getSourceIcon = (type: string) => {
 const ValidationBadge: React.FC<{ status?: LinkStatus }> = ({ status }) => {
   if (status === 'paywall') {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200" title="Diese Quelle erfordert möglicherweise ein kostenpflichtiges Abonnement.">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200" title="Diese Quelle erfordert möglicherweise ein kostenpflichtiges Abonnement.">
         <Lock className="w-3 h-3" />
         PAYWALL MÖGLICH
       </span>
@@ -38,7 +39,7 @@ const ValidationBadge: React.FC<{ status?: LinkStatus }> = ({ status }) => {
   }
   if (status === 'warning') {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100" title="Dieser Link konnte nicht erreicht werden (z.B. 404 Fehler).">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-red-50 text-red-600 border border-red-100" title="Die Seite wurde nicht gefunden (Fehler 404 oder 410).">
         <AlertTriangle className="w-3 h-3" />
         NICHT ERREICHBAR
       </span>
@@ -46,9 +47,9 @@ const ValidationBadge: React.FC<{ status?: LinkStatus }> = ({ status }) => {
   }
   if (status === 'accessible') {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100" title="Dieser Link wurde erfolgreich auf Erreichbarkeit geprüft.">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100" title="Die Seite war beim Erstellen des Berichts erreichbar. Das sagt nichts über den Inhalt aus.">
         <LinkIcon className="w-3 h-3" />
-        VERIFIZIERT
+        ERREICHBAR
       </span>
     );
   }
@@ -236,8 +237,9 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
     setIsExporting(true);
     try {
       const element = contentRef.current;
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false });
-      const imgData = canvas.toDataURL('image/png');
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+      // JPEG statt PNG: gleiche Lesbarkeit, aber ein Bruchteil der Dateigröße (per Mail versendbar).
+      const imgData = canvas.toDataURL('image/jpeg', 0.85);
       const pdfWidth = 210;
       const pdfHeight = 297;
       const imgPropsWidth = pdfWidth;
@@ -247,13 +249,13 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
       let heightLeft = imgPropsHeight;
       let position = 0;
 
-      doc.addImage(imgData, 'PNG', 0, position, imgPropsWidth, imgPropsHeight);
+      doc.addImage(imgData, 'JPEG', 0, position, imgPropsWidth, imgPropsHeight);
       heightLeft -= pdfHeight;
 
       while (heightLeft >= 0) {
         position = heightLeft - imgPropsHeight;
         doc.addPage();
-        doc.addImage(imgData, 'PNG', 0, position, imgPropsWidth, imgPropsHeight);
+        doc.addImage(imgData, 'JPEG', 0, position, imgPropsWidth, imgPropsHeight);
         heightLeft -= pdfHeight;
       }
 
@@ -323,7 +325,7 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
                         <select 
                         value={selectedVoice}
                         onChange={(e) => setSelectedVoice(e.target.value)}
-                        className="bg-transparent text-xs font-bold text-zinc-600 py-1 pl-1 pr-1 focus:outline-none cursor-pointer border-none"
+                        className="bg-transparent text-xs font-bold text-zinc-600 py-1 pl-1 pr-1 focus:outline-hidden cursor-pointer border-none"
                         >
                         <option value="Fenrir">Fenrir (Tief)</option>
                         <option value="Charon">Charon (Tief)</option>
@@ -434,6 +436,8 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
             </p>
         </div>
 
+        <QualitySummary quality={report.quality} />
+
         <div className="max-w-4xl mx-auto px-4 pb-16">
           <div className="space-y-16">
             {/* Main News Items */}
@@ -452,12 +456,14 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
                           {item.expertName}
                         </div>
                         <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-4 flex flex-col gap-2">
-                          <span>{new Date(item.date).toLocaleDateString('de-DE')}</span>
+                          <span>{formatItemDate(item.date)}</span>
+                          {attributionLabel(item.attribution) && <span className="text-zinc-400">{attributionLabel(item.attribution)}</span>}
                           <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900 flex items-center gap-1.5 transition-colors">
                             {getSourceIcon(item.sourceType)}
                             {item.sourceName || "Quelle"}
                           </a>
-                          <div className="mt-2">
+                          <div className="mt-2 flex flex-col items-start gap-1.5">
+                            <VerificationBadge level={item.verification} />
                             <ValidationBadge status={item.linkStatus} />
                           </div>
                         </div>
@@ -473,6 +479,17 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
                         <div className="editorial-text text-xl leading-relaxed text-zinc-800">
                           <p>{item.summary}</p>
                         </div>
+                        {item.groundedSources && item.groundedSources.length > 0 && (
+                          <div className="mt-4 text-xs text-zinc-500">
+                            <span className="font-bold uppercase tracking-widest text-[10px] text-zinc-700">Treffer der Websuche: </span>
+                            {item.groundedSources.map((source, sourceIdx) => (
+                              <React.Fragment key={source.uri}>
+                                {sourceIdx > 0 && ', '}
+                                <a href={source.uri} target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-900">{source.title}</a>
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </article>
@@ -506,7 +523,7 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
             AI Scout Agent • Recherche für Bildung & Führung
           </div>
           <div className="text-zinc-400 text-[10px] text-center max-w-lg">
-            Quellen werden automatisch auf Paywalls geprüft. Gelbe Markierungen deuten auf kostenpflichtige Inhalte hin.
+            Jeder Eintrag wird mit den Treffern der Websuche abgeglichen. „Belegt" heißt: Die Suche stützt den Eintrag. Es ersetzt nicht den eigenen Blick in die Quelle, bevor etwas weitergegeben wird.
           </div>
         </div>
       </div>

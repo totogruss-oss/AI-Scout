@@ -60,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, state }) => {
       {/* Backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-zinc-900/50 backdrop-blur-sm z-[200] transition-opacity"
+          className="fixed inset-0 bg-zinc-900/50 backdrop-blur-xs z-[200] transition-opacity"
           onClick={onClose}
         />
       )}

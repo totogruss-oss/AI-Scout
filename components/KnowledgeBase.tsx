@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { VerificationBadge, formatItemDate } from './VerificationBadge';
 import { Report, Expert, LinkStatus, Highlight } from '../types';
 import { Search, Filter, Calendar, ExternalLink, FileText, User, ChevronDown, TrendingUp, Tag, Lock, AlertTriangle, Clock, Sparkles, Send, Bookmark } from 'lucide-react';
 import { askAssistant, AssistantResponse, ChatMessage } from '../services/geminiService';
@@ -178,7 +179,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ reports, experts, 
       {/* AI Assistant Section */}
       <div className="bg-zinc-50 rounded-none p-6 md:p-10 border-2 border-zinc-900 relative overflow-hidden mb-12">
         <div className="flex items-start gap-6 relative z-10">
-            <div className="bg-zinc-900 p-3 rounded-full text-white shadow-sm flex-shrink-0 mt-1">
+            <div className="bg-zinc-900 p-3 rounded-full text-white shadow-xs flex-shrink-0 mt-1">
                 <Sparkles className="w-6 h-6" />
             </div>
             <div className="flex-1">
@@ -232,7 +233,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ reports, experts, 
                         value={chatQuery}
                         onChange={(e) => setChatQuery(e.target.value)}
                         placeholder="z.B. Was sind die Risiken von LLMs laut den letzten Reports?" 
-                        className="w-full pl-6 pr-16 py-5 rounded-none bg-white border-2 border-zinc-900 placeholder-zinc-500 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 transition-all font-sans text-lg"
+                        className="w-full pl-6 pr-16 py-5 rounded-none bg-white border-2 border-zinc-900 placeholder-zinc-500 text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 transition-all font-sans text-lg"
                     />
                     <button 
                         type="submit" 
@@ -255,7 +256,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ reports, experts, 
           <input 
             type="text" 
             placeholder="Filtere die Liste nach Themen..." 
-            className="w-full pl-14 pr-4 py-4 bg-zinc-50 border border-zinc-300 rounded-none focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 text-zinc-900 placeholder-zinc-500 transition-all font-sans text-lg"
+            className="w-full pl-14 pr-4 py-4 bg-zinc-50 border border-zinc-300 rounded-none focus:outline-hidden focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 text-zinc-900 placeholder-zinc-500 transition-all font-sans text-lg"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -268,7 +269,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ reports, experts, 
               <div className="relative min-w-[200px] group">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 group-focus-within:text-zinc-900 transition-colors" />
                 <select 
-                  className="w-full pl-12 pr-10 py-3 bg-white border border-zinc-300 rounded-none appearance-none focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 text-zinc-900 font-bold uppercase tracking-widest text-xs transition-all"
+                  className="w-full pl-12 pr-10 py-3 bg-white border border-zinc-300 rounded-none appearance-none focus:outline-hidden focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 text-zinc-900 font-bold uppercase tracking-widest text-xs transition-all"
                   value={selectedExpertId}
                   onChange={(e) => {
                       setSelectedExpertId(e.target.value);
@@ -287,7 +288,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ reports, experts, 
               <div className="relative min-w-[200px] group">
                 <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 group-focus-within:text-zinc-900 transition-colors" />
                 <select 
-                  className="w-full pl-12 pr-10 py-3 bg-white border border-zinc-300 rounded-none appearance-none focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 text-zinc-900 font-bold uppercase tracking-widest text-xs transition-all disabled:opacity-50"
+                  className="w-full pl-12 pr-10 py-3 bg-white border border-zinc-300 rounded-none appearance-none focus:outline-hidden focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 text-zinc-900 font-bold uppercase tracking-widest text-xs transition-all disabled:opacity-50"
                   value={selectedTag}
                   onChange={(e) => {
                       setSelectedTag(e.target.value);
@@ -307,7 +308,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ reports, experts, 
               <div className="relative min-w-[200px] group">
                 <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 group-focus-within:text-zinc-900 transition-colors" />
                 <select 
-                  className="w-full pl-12 pr-10 py-3 bg-white border border-zinc-300 rounded-none appearance-none focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 text-zinc-900 font-bold uppercase tracking-widest text-xs transition-all"
+                  className="w-full pl-12 pr-10 py-3 bg-white border border-zinc-300 rounded-none appearance-none focus:outline-hidden focus:ring-1 focus:ring-zinc-900 focus:border-zinc-900 text-zinc-900 font-bold uppercase tracking-widest text-xs transition-all"
                   value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value)}
                 >
@@ -325,19 +326,19 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ reports, experts, 
            <div className="flex bg-zinc-100 p-1 rounded-none border border-zinc-300 self-start xl:self-auto flex-wrap">
              <button 
                onClick={() => { setViewMode('insights'); setSelectedReportId(null); }}
-               className={`px-6 py-2 rounded-none text-xs font-bold uppercase tracking-widest transition-all ${viewMode === 'insights' ? 'bg-zinc-900 text-white shadow-sm border border-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'}`}
+               className={`px-6 py-2 rounded-none text-xs font-bold uppercase tracking-widest transition-all ${viewMode === 'insights' ? 'bg-zinc-900 text-white shadow-xs border border-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'}`}
              >
                News
              </button>
              <button 
                onClick={() => { setViewMode('strategy'); setSelectedReportId(null); }}
-               className={`px-6 py-2 rounded-none text-xs font-bold uppercase tracking-widest transition-all ${viewMode === 'strategy' ? 'bg-zinc-900 text-white shadow-sm border border-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'}`}
+               className={`px-6 py-2 rounded-none text-xs font-bold uppercase tracking-widest transition-all ${viewMode === 'strategy' ? 'bg-zinc-900 text-white shadow-xs border border-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'}`}
              >
                Strategie
              </button>
              <button 
                onClick={() => { setViewMode('highlights'); setSelectedReportId(null); }}
-               className={`px-6 py-2 rounded-none text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'highlights' ? 'bg-zinc-900 text-white shadow-sm border border-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'}`}
+               className={`px-6 py-2 rounded-none text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${viewMode === 'highlights' ? 'bg-zinc-900 text-white shadow-xs border border-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'}`}
              >
                <Bookmark className="w-4 h-4" />
                Markierungen
@@ -349,7 +350,7 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ reports, experts, 
              </button>
              <button 
                onClick={() => { setViewMode('reports'); setSelectedReportId(null); }}
-               className={`px-6 py-2 rounded-none text-xs font-bold uppercase tracking-widest transition-all ${viewMode === 'reports' ? 'bg-zinc-900 text-white shadow-sm border border-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'}`}
+               className={`px-6 py-2 rounded-none text-xs font-bold uppercase tracking-widest transition-all ${viewMode === 'reports' ? 'bg-zinc-900 text-white shadow-xs border border-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'}`}
              >
                Berichte
              </button>
@@ -372,11 +373,12 @@ export const KnowledgeBase: React.FC<KnowledgeBaseProps> = ({ reports, experts, 
                           <span className="text-zinc-300 hidden md:inline">•</span>
                           <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
                              <Calendar className="w-3.5 h-3.5" />
-                             {new Date(item.date).toLocaleDateString('de-DE')}
+                             {formatItemDate(item.date)}
                           </span>
                           <RelativeTimeBadge dateStr={item.date} />
                        </div>
                        <div className="flex items-center gap-2">
+                         <VerificationBadge level={item.verification} compact />
                          <StatusIcon status={item.linkStatus} />
                          <a 
                            href={item.sourceUrl} 

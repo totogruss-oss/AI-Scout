@@ -61,7 +61,7 @@ export const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({ isOpen, onClose, rea
 
   return (
     <div
-      className="fixed inset-0 z-[200] bg-zinc-900/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-[200] bg-zinc-900/60 backdrop-blur-xs flex items-center justify-center p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -135,7 +135,7 @@ export const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({ isOpen, onClose, rea
                   placeholder="AIza…"
                   autoComplete="off"
                   spellCheck={false}
-                  className="flex-1 min-w-0 px-3 py-2.5 font-mono text-sm outline-none bg-white"
+                  className="flex-1 min-w-0 px-3 py-2.5 font-mono text-sm outline-hidden bg-white"
                   autoFocus
                 />
                 <button

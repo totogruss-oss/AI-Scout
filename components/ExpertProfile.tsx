@@ -135,13 +135,13 @@ export const ExpertProfile: React.FC<ExpertProfileProps> = ({
     setIsEditing(false);
   };
 
-  const inputCls = 'w-full px-3 py-2 bg-white border border-zinc-300 text-zinc-900 focus:outline-none focus:border-zinc-900 font-sans text-sm';
+  const inputCls = 'w-full px-3 py-2 bg-white border border-zinc-300 text-zinc-900 focus:outline-hidden focus:border-zinc-900 font-sans text-sm';
   const labelCls = 'block text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1';
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#fdfcfb] overflow-y-auto animate-in fade-in duration-200">
       {/* Aktionsleiste */}
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b-2 border-zinc-900">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b-2 border-zinc-900">
         <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
           <button onClick={onClose} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-zinc-700 hover:text-zinc-900">
             <ArrowLeft className="w-4 h-4" /> Zur Expertenliste

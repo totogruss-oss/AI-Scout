@@ -2,6 +2,10 @@ import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 import { Expert, ExpertLink, ExpertLinkType, ExpertMilestone, Report, ReportItem, LinkStatus, FastScanResult } from '../types';
 
 import { requireApiKey } from './apiKeyStore';
+import {
+  BatchResult, ExpertBatch, GroundingInfo, EMPTY_REPORT_TEXT, SEARCH_SYSTEM_PROMPT, SYNTHESIS_SYSTEM_PROMPT,
+  buildBatches, buildQuality, buildSearchPrompt, buildSynthesisPrompt, mergeItems, processBatchResponse,
+} from './reportPipeline';
 
 // Initialize Gemini mit dem Key der nutzenden Person (Bring Your Own Key)
 const getClient = () => new GoogleGenAI({ apiKey: requireApiKey() });
@@ -74,7 +78,7 @@ const PAYWALL_DOMAINS = [
   'abo.'
 ];
 
-const validateLink = async (url: string, sourceName: string): Promise<LinkStatus> => {
+const validateLink = async (url: string, sourceName: string): Promise<LinkStatus | undefined> => {
   if (!url || !url.startsWith('http')) return 'warning';
 
   const lowerUrl = url.toLowerCase();
@@ -88,23 +92,21 @@ const validateLink = async (url: string, sourceName: string): Promise<LinkStatus
     return 'paywall';
   }
 
-  // Reachability check
+  // Erreichbarkeit über einen öffentlichen Abrufdienst prüfen. Antwortet der Dienst
+  // nicht, bleibt der Status offen – ein blinder Abruf ohne Antwort-Einsicht würde
+  // auch bei „Seite nicht gefunden" Erfolg melden.
   try {
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const res = await fetch(proxyUrl);
-    if (!res.ok) throw new Error('Proxy failed');
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return undefined;
     const data = await res.json();
-    if (data.status && data.status.http_code >= 400) {
-      return 'warning';
-    }
-    return 'accessible';
-  } catch (error) {
-    try {
-        await fetch(url, { mode: 'no-cors' });
-        return 'accessible';
-    } catch (e) {
-        return 'warning';
-    }
+    const code = data?.status?.http_code;
+    if (typeof code !== 'number') return undefined;
+    // Nur eindeutige Befunde melden: 401/403/429 heißen meist bloß „Abrufdienst geblockt".
+    if (code === 404 || code === 410) return 'warning';
+    return code < 400 ? 'accessible' : undefined;
+  } catch {
+    return undefined;
   }
 };
 
@@ -225,7 +227,7 @@ export const generateFastScan = async (onProgress: (msg: string) => void): Promi
   const ai = getClient();
   onProgress("Starte Fast Scan mit Google Search...");
 
-  const prompt = `Erstelle einen schnellen, prägnanten Überblick über die wichtigsten KI-News und Entwicklungen der letzten 24-48 Stunden. 
+  const prompt = `Erstelle einen schnellen, prägnanten Überblick über die wichtigsten KI-News und Entwicklungen der letzten 24-48 Stunden. Heute ist der ${new Date().toLocaleDateString("de-DE")}. 
 Fokussiere dich auf bahnbrechende Modelle, wichtige Unternehmensentscheidungen (OpenAI, Google, Anthropic, Meta, etc.), neue Tools oder relevante Regulierungen.
 Formatiere die Antwort in Markdown mit einer kurzen Einleitung und Bulletpoints für die wichtigsten Meldungen.`;
 
@@ -259,138 +261,170 @@ Formatiere die Antwort in Markdown mit einer kurzen Einleitung und Bulletpoints 
   }
 };
 
+/** Modell für Suche und Zusammenfassung des Berichts. */
+const REPORT_MODEL = "gemini-3-flash-preview";
+/** Gleichzeitige Suchläufe – niedrig halten, sonst greifen die Mengenbegrenzungen der API. */
+const SEARCH_CONCURRENCY = 2;
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const statusOf = (error: unknown): number | undefined => {
+  const status = (error as { status?: unknown })?.status;
+  return typeof status === 'number' ? status : undefined;
+};
+
+/** Kontingent des API-Keys erschöpft (HTTP 429). */
+export const isQuotaError = (error: unknown): boolean => statusOf(error) === 429;
+
+/** Wiederholt bei vorübergehenden Fehlern (Überlastung, Mengenbegrenzung). */
+const withRetry = async <T,>(task: () => Promise<T>, delays = [4000, 12000]): Promise<T> => {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await task();
+    } catch (error) {
+      const status = statusOf(error);
+      const retryable = status === 429 || status === 500 || status === 503;
+      if (!retryable || attempt >= delays.length) throw error;
+      await sleep(delays[attempt]);
+    }
+  }
+};
+
+/** Ein Suchlauf für eine kleine Gruppe von Personen. Antwort als Text, damit die Suchbelege je Textstelle mitkommen. */
+const searchBatch = async (ai: GoogleGenAI, batch: ExpertBatch, today: Date): Promise<BatchResult> => {
+  const response = await withRetry(() => ai.models.generateContent({
+    model: REPORT_MODEL,
+    contents: buildSearchPrompt(batch, today),
+    config: {
+      systemInstruction: SEARCH_SYSTEM_PROMPT,
+      tools: [{ googleSearch: {} }],
+    },
+  }));
+  const grounding = response.candidates?.[0]?.groundingMetadata as GroundingInfo | undefined;
+  const result = processBatchResponse(response.text || '', grounding, batch, today);
+  // Hilft beim Nachvollziehen in der Browser-Konsole, falls Einstufungen überraschen.
+  console.info(`[AI Scout] ${batch.label}: ${result.items.length} Einträge, ` +
+    `${grounding?.groundingChunks?.length ?? 0} Suchtreffer, ${grounding?.groundingSupports?.length ?? 0} belegte Textstellen`,
+    { treffer: grounding?.groundingChunks?.map(c => c.web?.title), einstufung: result.items.map(i => i.verification), aussortiert: result.dropped });
+  return result;
+};
+
+/** Zweiter Schritt: Einordnung nur auf Basis der geprüften Funde – ohne Suche, damit nichts Neues dazukommt. */
+const synthesize = async (ai: GoogleGenAI, items: ReportItem[], today: Date): Promise<{ title: string; intro: string; actionSteps: string[] }> => {
+  const response = await withRetry(() => ai.models.generateContent({
+    model: REPORT_MODEL,
+    contents: buildSynthesisPrompt(items, today),
+    config: {
+      systemInstruction: SYNTHESIS_SYSTEM_PROMPT,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          intro: { type: Type.STRING },
+          actionSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
+        },
+        required: ["title", "intro", "actionSteps"],
+      },
+    },
+  }));
+  const data = JSON.parse(response.text || "{}");
+  return {
+    title: typeof data.title === 'string' ? data.title : '',
+    intro: typeof data.intro === 'string' ? data.intro : '',
+    actionSteps: Array.isArray(data.actionSteps) ? data.actionSteps.filter((s: unknown) => typeof s === 'string' && s.trim()) : [],
+  };
+};
+
+/**
+ * Deep Research in drei Schritten:
+ *  1. Suche in kleinen Gruppen (je Kategorie), damit keine Person untergeht.
+ *  2. Prüfung jedes Fundes: Datum im Zeitraum? Durch Suchquellen gestützt?
+ *  3. Einordnung nur auf Basis der geprüften Funde.
+ */
 export const generateResearchReport = async (
   experts: Expert[],
   onProgress: (msg: string) => void
 ): Promise<Report> => {
   const ai = getClient();
-  const activeExperts = experts.filter(e => e.active);
-  const expertNames = activeExperts.map(e => {
-    const details = [e.role, e.twitterHandle ? `X: ${e.twitterHandle}` : '', e.primaryChannels?.length ? `Kanäle: ${e.primaryChannels.join('/')}` : '']
-      .filter(Boolean).join('; ');
-    return `${e.name} (${details})`;
-  }).join(", ");
-  
-  onProgress("Analysiere Bildungskontext & starte Deep Search...");
-
-  // Using Flash model for fast search grounding
-  const modelId = "gemini-3-flash-preview";
-
-  const systemPrompt = `
-    Du bist ein hochspezialisierter KI-Analyst und Strategieberater für Bildungsmanagement.
-    
-    DEINE MISSION:
-    Erstelle einen UMFASSENDEN und DETAILLIERTEN Wochenreport über die Aktivitäten führender KI-Experten.
-    
-    1. **EXECUTIVE SUMMARY (Priorität A)**:
-       - Schreibe eine ausführliche Einleitung (ca. 300-400 Wörter).
-       - Fasse nicht nur zusammen, sondern ANALYSIERE: Welche Meta-Trends zeichnen sich diese Woche ab? 
-       - Gibt es Widersprüche zwischen den Experten (z.B. LeCun vs. Hinton)?
-       - Was bedeutet das "Big Picture" für Schulen und Bildungseinrichtungen?
-       - Der Text muss tiefgehend und analytisch sein, kein oberflächliches "Hallo".
-
-    2. **RECHERCHE (Priorität B)**:
-       - Sei **ERSCHÖPFEND (Exhaustive)**. Der Nutzer möchte ALLE relevanten neuen Beiträge sehen.
-       - Ziel: **15 bis 20 gefundene Items**.
-       - Wenn ein Experte aktiv war, MUSS es in den Report. Filtere NICHT aus Platzgründen.
-       - **PRIORISIERE DIVERSITÄT DER QUELLEN**: Beschränke dich nicht auf Mainstream-Medien. Suche aktiv nach einer breiten Vielfalt an Quellen, einschließlich Nischenpublikationen, Fachblogs und akademischen Pre-Prints (z.B. arXiv, bioRxiv, OSF Preprints, SSRN). Neben Social Media (X/LinkedIn), Videos (YouTube) und Podcasts sollen auch diese tiefergehenden wissenschaftlichen und fachspezifischen Quellen stark gewichtet werden.
-
-    3. **QUALITÄTSSICHERUNG**:
-       - OBERSTE REGEL: Erfinde NIEMALS URLs. Nutze nur Links, die das Tool liefert.
-       - Prüfe Paywalls (Markiere Bezahlartikel als solche im Quellennamen, wenn möglich).
-  `;
-
-  const userPrompt = `
-    Liste der zu überwachenden Experten: ${expertNames}
-    
-    Führe einen Deep Research durch (Zeitraum: letzte 14 Tage, Fokus auf die letzte Woche).
-    Bitte priorisiere bei der Suche eine breite Vielfalt an Quellen. Suche gezielt auch nach akademischen Pre-Prints (z.B. arXiv) und Nischenpublikationen, nicht nur nach Mainstream-Nachrichten.
-    
-    **Anforderungen an den Output:**
-    1. **Intro**: Eine ausführliche strategische Analyse der Woche (Management Summary).
-    2. **Items**: Eine lange Liste (15-20 Einträge) aller relevanten Aktivitäten. Lieber zu viel als zu wenig.
-       - WICHTIG: Das Feld "sourceName" muss den konkreten Namen der Publikation enthalten.
-       - WICHTIG: "sourceUrl" muss ein funktionierender Link sein.
-    3. **Action Steps**: Konkrete Handlungsempfehlungen für Schulleitung/IT.
-
-    Gib das Ergebnis als JSON zurück.
-  `;
-
-  onProgress("Deep Search läuft: Durchsuche das Web nach ALLEN Aktivitäten...");
-
-  try {
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: userPrompt,
-      config: {
-        systemInstruction: systemPrompt,
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING },
-            intro: { type: Type.STRING, description: "Ausführliche Executive Summary (300+ Wörter) mit Trend-Analyse." },
-            items: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  headline: { type: Type.STRING },
-                  summary: { type: Type.STRING },
-                  sourceUrl: { type: Type.STRING, description: "EXAKTE URL aus dem Suchergebnis." },
-                  sourceName: { type: Type.STRING, description: "Name der Publikation/Plattform" },
-                  sourceType: { type: Type.STRING, enum: ["Twitter/X", "Paper", "Video/YouTube", "Podcast", "News", "LinkedIn", "Andere"] },
-                  expertName: { type: Type.STRING },
-                  date: { type: Type.STRING },
-                  tags: { 
-                    type: Type.ARRAY, 
-                    items: { type: Type.STRING }, 
-                    description: "3-5 Schlagworte" 
-                  }
-                },
-                required: ["headline", "summary", "sourceType", "sourceName", "sourceUrl", "expertName", "tags"]
-              }
-            },
-            actionSteps: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            }
-          },
-          required: ["title", "intro", "items", "actionSteps"]
-        }
-      }
-    });
-
-    onProgress("Generiere umfangreichen Report und validiere Links...");
-
-    const jsonText = response.text || "{}";
-    const data = JSON.parse(jsonText);
-
-    // Process and validate items
-    const items: ReportItem[] = await Promise.all((data.items || []).map(async (item: any) => ({
-      ...item,
-      linkStatus: await validateLink(item.sourceUrl, item.sourceName)
-    })));
-
-    const report: Report = {
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      title: data.title || "Umfassendes AI Education Update",
-      intro: data.intro || "Zusammenfassung der relevanten Entwicklungen.",
-      items: items,
-      actionSteps: data.actionSteps || [],
-      rawMarkdown: "N/A"
-    };
-
-    onProgress("Fertig!");
-    return report;
-
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    onProgress("Fehler beim Abrufen der Daten.");
-    throw error;
+  const today = new Date();
+  const batches = buildBatches(experts);
+  if (batches.length === 0) {
+    throw new Error("Keine aktiven Personen ausgewählt.");
   }
+
+  const results: BatchResult[] = [];
+  const searched: Expert[] = [];
+  const failed: Expert[] = [];
+  let lastError: unknown;
+  let done = 0;
+
+  onProgress(`Suche läuft: 0 von ${batches.length} Gruppen …`);
+  const queue = [...batches];
+  const worker = async () => {
+    for (let batch = queue.shift(); batch; batch = queue.shift()) {
+      // Ist das Kontingent erschöpft, bringen weitere Versuche nur Wartezeit.
+      if (isQuotaError(lastError)) { failed.push(...batch.experts); done++; continue; }
+      try {
+        results.push(await searchBatch(ai, batch, today));
+        searched.push(...batch.experts);
+      } catch (error) {
+        console.error(`Suchlauf „${batch.label}" fehlgeschlagen:`, error);
+        lastError = error;
+        failed.push(...batch.experts);
+      }
+      done++;
+      onProgress(`Suche läuft: ${done} von ${batches.length} Gruppen (${batch.label}) …`);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(SEARCH_CONCURRENCY, batches.length) }, worker));
+
+  // Wenn gar kein Suchlauf geklappt hat, ist das ein Fehler und kein leerer Bericht.
+  if (searched.length === 0) throw lastError ?? new Error("Die Suche ist fehlgeschlagen.");
+
+  onProgress("Prüfe Quellen und Daten …");
+  const merged = mergeItems(results.flatMap(r => r.items));
+  const items: ReportItem[] = await Promise.all(merged.map(async item => ({
+    ...item,
+    linkStatus: await validateLink(item.sourceUrl, item.sourceName),
+  })));
+
+  const quality = buildQuality({
+    items,
+    searchedExperts: searched,
+    failedExperts: failed,
+    dropped: results.map(r => r.dropped),
+  });
+
+  let text = { title: EMPTY_REPORT_TEXT.title, intro: EMPTY_REPORT_TEXT.intro, actionSteps: [] as string[] };
+  if (items.length > 0) {
+    onProgress("Schreibe Einordnung …");
+    try {
+      const synthesis = await synthesize(ai, items, today);
+      text = {
+        title: synthesis.title || "KI-Update",
+        intro: synthesis.intro || "Die Einordnung konnte nicht erstellt werden. Die geprüften Funde stehen unten.",
+        // Empfehlungen nur, wenn mindestens ein Fund durch die Suche gestützt ist.
+        actionSteps: items.some(i => i.verification !== 'unbelegt') ? synthesis.actionSteps : [],
+      };
+    } catch (error) {
+      // Die geprüften Funde sind das Wertvolle – daran soll der Bericht nicht scheitern.
+      console.error("Einordnung fehlgeschlagen:", error);
+      text = { title: "KI-Update", intro: "Die Einordnung konnte nicht erstellt werden. Die geprüften Funde stehen unten.", actionSteps: [] };
+    }
+  }
+
+  onProgress("Fertig!");
+  return {
+    id: crypto.randomUUID(),
+    createdAt: today.toISOString(),
+    title: text.title,
+    intro: text.intro,
+    items,
+    actionSteps: text.actionSteps,
+    rawMarkdown: "N/A",
+    quality,
+  };
 };
 
 /**
