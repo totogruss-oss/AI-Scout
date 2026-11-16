@@ -45,3 +45,11 @@ export const LEGACY_HANDLE_FIXES: Record<string, string | undefined> = {
   '@yoshua_bengio': undefined,
   '@s_russell': undefined,
 };
+
+/**
+ * Wikidata-Einträge, die fälschlich Personen zugeordnet wurden.
+ * Q116758847 = Anthropic (stand bei Jack Clark, weil der Wikipedia-Titel dorthin umleitet).
+ * Q17065875  = gleichnamiger US-Philosoph (stand bei Peter Steinberger).
+ */
+export const LEGACY_WRONG_WIKIDATA_IDS: ReadonlySet<string> = new Set(['Q116758847', 'Q17065875']);
+export const LEGACY_WRONG_WIKIPEDIA_TITLES: ReadonlySet<string> = new Set(['Jack_Clark_(AI_policy_expert)', 'Anthropic', 'Peter_Steinberger']);

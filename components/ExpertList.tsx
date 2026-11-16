@@ -3,7 +3,7 @@ import { Expert, ExpertCategory, Report } from '../types';
 import { Trash2, Plus, User, CheckCircle, Circle, X, RefreshCw, Link2, FileText } from 'lucide-react';
 import { analyzeExpertProfile, ExpertProfileResearch } from '../services/geminiService';
 import { EXPERT_CATEGORIES } from '../constants';
-import { applyOpenDataProfile, fetchOpenDataProfile, initialsAvatar, matchesExpertName, mergeLinks } from '../services/profileService';
+import { LookupUnavailableError, applyOpenDataProfile, fetchOpenDataProfile, initialsAvatar, matchesExpertName, mergeLinks, needsEnrichment } from '../services/profileService';
 import { ExpertProfile } from './ExpertProfile';
 
 interface ExpertListProps {
@@ -65,7 +65,15 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
       const data = await fetchOpenDataProfile(expert);
       // Funktionales Update, damit parallele Änderungen nicht verloren gehen.
       setExperts(prev => prev.map(e => (e.id === expert.id ? applyOpenDataProfile(e, data) : e)));
-      return data.found;
+      return data.found ? 'found' : 'not-found';
+    } catch (error) {
+      // Quelle nicht erreichbar oder gedrosselt: Profil NICHT als abgeglichen markieren,
+      // damit es beim nächsten Öffnen erneut versucht wird.
+      if (error instanceof LookupUnavailableError) {
+        console.warn(error.message);
+        return 'unavailable';
+      }
+      throw error;
     } finally {
       setEnriching(expert.id, false);
     }
@@ -75,11 +83,11 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
   useEffect(() => {
     if (autoEnrichStarted.current) return;
     autoEnrichStarted.current = true;
-    const pending = experts.filter(e => !e.enrichedAt);
+    const pending = experts.filter(e => needsEnrichment(e));
     (async () => {
       for (const expert of pending) {
         await enrichOpenData(expert);
-        await new Promise(r => setTimeout(r, 250)); // Wikimedia-APIs schonen
+        await new Promise(r => setTimeout(r, 600)); // Wikimedia-APIs schonen
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -182,8 +190,14 @@ export const ExpertList: React.FC<ExpertListProps> = ({ experts, setExperts, rep
   };
 
   const handleEnrichOne = async (expert: Expert) => {
-    const found = await enrichOpenData(expert);
-    if (!found) {
+    const outcome = await enrichOpenData(expert);
+    if (outcome === 'unavailable') {
+      setConfirmDialog({
+        message: 'Wikipedia und Wikidata waren gerade nicht erreichbar oder haben die Abfrage gedrosselt. Bitte in ein paar Minuten noch einmal versuchen.',
+        onConfirm: () => setConfirmDialog(null),
+        isAlert: true
+      });
+    } else if (outcome === 'not-found') {
       setConfirmDialog({
         message: `Zu „${expert.name}" wurde kein passender Wikidata-Eintrag gefunden. Du kannst unter „Bearbeiten" eine Wikidata-ID, ein Bild und Links manuell eintragen.`,
         onConfirm: () => setConfirmDialog(null),
