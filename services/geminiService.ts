@@ -4,7 +4,7 @@ import { Expert, ExpertLink, ExpertLinkType, ExpertMilestone, Report, ReportItem
 import { requireApiKey } from './apiKeyStore';
 import {
   BatchResult, ExpertBatch, GroundingInfo, EMPTY_REPORT_TEXT, SEARCH_SYSTEM_PROMPT, SYNTHESIS_SYSTEM_PROMPT,
-  buildBatches, buildQuality, buildSearchPrompt, buildSynthesisPrompt, mergeItems, processBatchResponse,
+  buildBatches, buildQuality, buildSearchPrompt, buildSynthesisPrompt, mergeItems, processBatchResponse, selectTopItems,
 } from './reportPipeline';
 
 // Initialize Gemini mit dem Key der nutzenden Person (Bring Your Own Key)
@@ -310,7 +310,7 @@ const searchBatch = async (ai: GoogleGenAI, batch: ExpertBatch, today: Date): Pr
 };
 
 /** Zweiter Schritt: Einordnung nur auf Basis der geprüften Funde – ohne Suche, damit nichts Neues dazukommt. */
-const synthesize = async (ai: GoogleGenAI, items: ReportItem[], today: Date): Promise<{ title: string; intro: string; actionSteps: string[] }> => {
+const synthesize = async (ai: GoogleGenAI, items: ReportItem[], today: Date): Promise<{ title: string; intro: string; actionSteps: string[]; topItems: unknown }> => {
   const response = await withRetry(() => ai.models.generateContent({
     model: REPORT_MODEL,
     contents: buildSynthesisPrompt(items, today),
@@ -323,8 +323,9 @@ const synthesize = async (ai: GoogleGenAI, items: ReportItem[], today: Date): Pr
           title: { type: Type.STRING },
           intro: { type: Type.STRING },
           actionSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
+          topItems: { type: Type.ARRAY, items: { type: Type.INTEGER } },
         },
-        required: ["title", "intro", "actionSteps"],
+        required: ["title", "intro", "actionSteps", "topItems"],
       },
     },
   }));
@@ -333,6 +334,7 @@ const synthesize = async (ai: GoogleGenAI, items: ReportItem[], today: Date): Pr
     title: typeof data.title === 'string' ? data.title : '',
     intro: typeof data.intro === 'string' ? data.intro : '',
     actionSteps: Array.isArray(data.actionSteps) ? data.actionSteps.filter((s: unknown) => typeof s === 'string' && s.trim()) : [],
+    topItems: data.topItems,
   };
 };
 
@@ -396,16 +398,23 @@ export const generateResearchReport = async (
     dropped: results.map(r => r.dropped),
   });
 
+  // Einordnung und Auswahl stützen sich auf die Funde, die die Suche stützt.
+  // Gibt es keine, wird mit allen gearbeitet – dann aber ohne Empfehlungen.
+  const supported = items.filter(i => i.verification !== 'unbelegt');
+  const basis = supported.length > 0 ? supported : items;
+
   let text = { title: EMPTY_REPORT_TEXT.title, intro: EMPTY_REPORT_TEXT.intro, actionSteps: [] as string[] };
+  let picks: unknown;
   if (items.length > 0) {
     onProgress("Schreibe Einordnung …");
     try {
-      const synthesis = await synthesize(ai, items, today);
+      const synthesis = await synthesize(ai, basis, today);
+      picks = synthesis.topItems;
       text = {
         title: synthesis.title || "KI-Update",
         intro: synthesis.intro || "Die Einordnung konnte nicht erstellt werden. Die geprüften Funde stehen unten.",
         // Empfehlungen nur, wenn mindestens ein Fund durch die Suche gestützt ist.
-        actionSteps: items.some(i => i.verification !== 'unbelegt') ? synthesis.actionSteps : [],
+        actionSteps: supported.length > 0 ? synthesis.actionSteps : [],
       };
     } catch (error) {
       // Die geprüften Funde sind das Wertvolle – daran soll der Bericht nicht scheitern.
@@ -414,13 +423,17 @@ export const generateResearchReport = async (
     }
   }
 
+  // „Das Wichtigste": Auswahl des Modells, geprüft und notfalls aufgefüllt.
+  const highlighted = selectTopItems(picks, basis);
+  const finalItems = [...highlighted, ...items.filter(i => !basis.includes(i)).map(i => ({ ...i, highlight: false }))];
+
   onProgress("Fertig!");
   return {
     id: crypto.randomUUID(),
     createdAt: today.toISOString(),
     title: text.title,
     intro: text.intro,
-    items,
+    items: finalItems,
     actionSteps: text.actionSteps,
     rawMarkdown: "N/A",
     quality,
@@ -442,9 +455,11 @@ export const getReportAudioUrl = async (report: Report, voiceName: string = 'Fen
   script += `Zuerst die Analyse der Woche: ${report.intro} \n\n`;
   
   // 2. Items Loop
-  script += `Kommen wir nun zu den Details. Wir haben ${report.items.length} relevante Updates gefunden. \n\n`;
+  // Vorgelesen wird die Auswahl „Das Wichtigste"; ältere Berichte ohne Auswahl komplett.
+  const spoken = report.items.some(i => i.highlight) ? report.items.filter(i => i.highlight) : report.items;
+  script += `Kommen wir nun zu den Details. Hier sind die ${spoken.length} wichtigsten Meldungen. \n\n`;
   
-  report.items.forEach((item, index) => {
+  spoken.forEach((item, index) => {
     script += `Meldung ${index + 1}: ${item.headline}. \n`;
     script += `Experte: ${item.expertName}. \n`;
     script += `${item.summary} \n\n`;

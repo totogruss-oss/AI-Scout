@@ -114,6 +114,8 @@ export interface ReportItem {
   /** Suchquellen, die genau diesen Eintrag stützen. */
   groundedSources?: SourceRef[];
   attribution?: Attribution;
+  /** Gehört zur Auswahl „Das Wichtigste" – der Rest ist im Bericht eingeklappt. */
+  highlight?: boolean;
 }
 
 export interface Report {

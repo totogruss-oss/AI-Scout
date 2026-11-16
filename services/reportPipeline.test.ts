@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Expert } from '../types';
 import {
   GroundingInfo, buildBatches, buildQuality, buildSearchPrompt, classify, cleanUrl, matchExpert,
-  mergeItems, parseBlocks, parseItemDate, processBatchResponse, sameSite, toIsoDate,
+  mergeItems, parseBlocks, parseItemDate, processBatchResponse, sameSite, selectTopItems, toIsoDate,
 } from './reportPipeline';
 
 const expert = (id: string, name: string, category?: Expert['category'], active = true): Expert =>
@@ -222,5 +222,38 @@ describe('Zusammenführen', () => {
       searched: 3, withoutFindings: ['Katharina Zweig'], notChecked: ['Yann LeCun'],
       belegt: 1, teilweise: 1, unbelegt: 0, droppedTooOld: 1, droppedNoDate: 1, droppedOther: 1,
     });
+  });
+});
+
+describe('Das Wichtigste auswählen', () => {
+  const make = (n: number, expertName: string, verification: 'belegt' | 'teilweise' | 'unbelegt', date = '2026-11-10') => ({
+    headline: `Titel ${n}`, summary: 'Text', sourceUrl: `https://a.example/${n}`, sourceName: 'A', sourceType: 'News' as const,
+    expertName, date, tags: [], verification,
+  });
+  const items = [
+    make(1, 'A', 'belegt'), make(2, 'A', 'belegt'), make(3, 'A', 'teilweise'),
+    make(4, 'B', 'unbelegt'), make(5, 'C', 'teilweise', '2026-11-14'), make(6, 'D', 'belegt', '2026-11-01'),
+  ];
+  const picked = (result: ReturnType<typeof selectTopItems>) => result.filter(i => i.highlight).map(i => i.headline);
+
+  it('übernimmt die Vorschläge des Modells in dessen Reihenfolge', () => {
+    const result = selectTopItems([5, 1, 6], items);
+    expect(picked(result)).toEqual(['Titel 5', 'Titel 1', 'Titel 6']);
+    // Die Auswahl steht vorn, der Rest folgt in bisheriger Reihenfolge.
+    expect(result.map(i => i.headline)).toEqual(['Titel 5', 'Titel 1', 'Titel 6', 'Titel 2', 'Titel 3', 'Titel 4']);
+  });
+  it('lässt Unbelegtes, Dubletten, ungültige Nummern und den dritten Fund derselben Person weg', () => {
+    expect(picked(selectTopItems([4, 1, 1, 99, 0, 'x', 2, 3, 5], items))).toEqual(['Titel 1', 'Titel 2', 'Titel 5']);
+  });
+  it('füllt auf, wenn das Modell nichts Brauchbares liefert – bestbelegt und neu zuerst', () => {
+    expect(picked(selectTopItems(undefined, items))).toEqual(['Titel 1', 'Titel 2', 'Titel 6', 'Titel 5']);
+    expect(picked(selectTopItems(undefined, items, 2))).toEqual(['Titel 1', 'Titel 2']);
+  });
+  it('wählt nichts aus, wenn nur Unbelegtes vorliegt', () => {
+    expect(picked(selectTopItems([1], [make(1, 'A', 'unbelegt')]))).toEqual([]);
+  });
+  it('hält die Obergrenze ein', () => {
+    const many = Array.from({ length: 30 }, (_, i) => make(i + 1, `Person ${i}`, 'belegt'));
+    expect(picked(selectTopItems(many.map((_, i) => i + 1), many))).toHaveLength(10);
   });
 });

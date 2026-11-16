@@ -512,6 +512,10 @@ Du bekommst eine Liste geprüfter Funde. Arbeite ausschließlich mit dieser List
 - Wenn die Liste wenig hergibt, sag das in einem Satz, statt zu strecken.
 - Schreibe nüchtern und konkret, auf Deutsch.`;
 
+/** So viele Einträge zeigt der Bericht aufgeklappt – der Rest bleibt erreichbar, aber eingeklappt. */
+export const MAX_TOP_ITEMS = 10;
+const MAX_TOP_PER_EXPERT = 2;
+
 export const buildSynthesisPrompt = (items: ReportItem[], today: Date, windowDays = RESEARCH_WINDOW_DAYS): string => {
   const list = items.map((item, index) => ({
     nr: index + 1,
@@ -528,7 +532,44 @@ ${JSON.stringify(list, null, 1)}
 Erstelle daraus:
 1. title: eine sachliche Überschrift (höchstens 8 Wörter), die das wichtigste Thema benennt.
 2. intro: eine Einordnung in 120 bis 200 Wörtern. Welche Linien ziehen sich durch die Funde? Wo widersprechen sich die Personen? Was davon ist für Schule und Unterricht relevant?
-3. actionSteps: 2 bis 4 konkrete, kleine Handlungsimpulse für Schulleitung und IT. Jeder Impuls nennt in Klammern die Nummern der Funde, auf die er sich stützt, z. B. "(Funde 2, 5)".`;
+3. actionSteps: 2 bis 4 konkrete, kleine Handlungsimpulse für Schulleitung und IT. Jeder Impuls nennt in Klammern die Personen, auf deren Funde er sich stützt, z. B. "(Mollick, Willison)".
+4. topItems: die Nummern der höchstens ${MAX_TOP_ITEMS} Funde, die diese Leserin oder dieser Leser diese Woche wirklich kennen sollte – das Wichtigste zuerst. Kriterien: neue Entwicklung statt Wiederholung, Tragweite, Bezug zu Bildung und Schule. Höchstens ${MAX_TOP_PER_EXPERT} Funde pro Person, möglichst verschiedene Sichtweisen.`;
+};
+
+/**
+ * Wählt „Das Wichtigste" aus. Die Vorschläge des Modells werden geprüft
+ * (gültige Nummer, keine Dubletten, nichts Unbelegtes, Obergrenze je Person);
+ * fehlen brauchbare Vorschläge, rücken die bestbelegten, neuesten Funde nach.
+ */
+export const selectTopItems = (picks: unknown, items: ReportItem[], max = MAX_TOP_ITEMS): ReportItem[] => {
+  const eligible = (item: ReportItem) => item.verification !== 'unbelegt';
+  const chosen = new Set<number>();
+  const perExpert = new Map<string, number>();
+  const take = (index: number) => {
+    const item = items[index];
+    if (!item || chosen.has(index) || chosen.size >= max || !eligible(item)) return;
+    const count = perExpert.get(item.expertName) || 0;
+    if (count >= MAX_TOP_PER_EXPERT) return;
+    perExpert.set(item.expertName, count + 1);
+    chosen.add(index);
+  };
+
+  for (const pick of Array.isArray(picks) ? picks : []) {
+    const nr = typeof pick === 'number' ? pick : Number.parseInt(String(pick), 10);
+    if (Number.isInteger(nr)) take(nr - 1);
+  }
+  // Auffüllen, falls das Modell zu wenig (oder Unbrauchbares) geliefert hat.
+  const target = Math.min(max, items.filter(eligible).length);
+  if (chosen.size < Math.min(target, 3)) {
+    const ranked = items.map((item, index) => ({ item, index }))
+      .sort((a, b) => RANK[a.item.verification || 'unbelegt'] - RANK[b.item.verification || 'unbelegt'] || b.item.date.localeCompare(a.item.date));
+    for (const { index } of ranked) take(index);
+  }
+  // Auswahl in der Reihenfolge ihrer Wichtigkeit voranstellen, der Rest folgt unverändert.
+  return [
+    ...[...chosen].map(index => ({ ...items[index], highlight: true })),
+    ...items.filter((_, index) => !chosen.has(index)).map(item => ({ ...item, highlight: false })),
+  ];
 };
 
 /** Bericht ohne einen einzigen Fund – ehrlich benennen statt etwas zu erfinden. */

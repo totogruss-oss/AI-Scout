@@ -5,7 +5,7 @@ import { Expert } from '../types';
 const generateContent = vi.fn();
 vi.mock('@google/genai', () => ({
   GoogleGenAI: class { models = { generateContent }; },
-  Type: { OBJECT: 'OBJECT', STRING: 'STRING', ARRAY: 'ARRAY' },
+  Type: { OBJECT: 'OBJECT', STRING: 'STRING', ARRAY: 'ARRAY', INTEGER: 'INTEGER' },
   ThinkingLevel: { HIGH: 'HIGH' },
 }));
 vi.mock('./apiKeyStore', () => ({ requireApiKey: () => 'test-key' }));
@@ -73,6 +73,20 @@ describe('generateResearchReport', () => {
     expect(report.title).toBe('Überschrift');
     expect(report.actionSteps).toEqual(['Impuls (Fund 1)']);
     expect(report.quality).toMatchObject({ searched: 2, belegt: 1, withoutFindings: ['Gary Marcus'], notChecked: [] });
+  });
+
+  it('markiert die Auswahl, fasst nur Gestütztes zusammen und behält Unbelegtes eingeklappt', async () => {
+    const both = finding('Simon Willison', daysAgo(2), 'https://simonwillison.net/a')
+      + finding('Simon Willison', daysAgo(3), 'https://erfunden.example/b').replace('Belegter Satz von Simon Willison.', 'Zweiter Text ohne Beleg.');
+    generateContent.mockImplementation(async (request: any) => isSearch(request)
+      ? searchResponse(both, 'simonwillison.net')
+      : { text: JSON.stringify({ title: 'T', intro: 'I', actionSteps: ['Impuls (Willison)'], topItems: [1] }) });
+
+    const report = await generateResearchReport([EXPERTS[0]], () => {});
+    expect(report.items.map(i => [i.verification, i.highlight])).toEqual([['belegt', true], ['unbelegt', false]]);
+    const synthesisCall = generateContent.mock.calls.map(c => c[0]).find(c => !isSearch(c));
+    expect(synthesisCall.contents).not.toContain('Zweiter Text ohne Beleg');
+    expect(report.actionSteps).toEqual(['Impuls (Willison)']);
   });
 
   it('gibt keine Empfehlungen aus, wenn kein Fund durch die Suche gestützt ist', async () => {
