@@ -69,6 +69,8 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const [isExporting, setIsExporting] = useState(false);
+  const [showMore, setShowMore] = useState(false);
+  const [showUnproven, setShowUnproven] = useState(false);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [selectedVoice, setSelectedVoice] = useState('Fenrir');
@@ -269,6 +271,65 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
     }
   };
 
+  // Neuere Berichte zeigen aufgeklappt nur „Das Wichtigste"; der Rest ist eingeklappt.
+  // Ältere Berichte ohne Auswahl zeigen wie bisher alles.
+  const hasSelection = report.items.some(i => i.highlight);
+  const topItems = hasSelection ? report.items.filter(i => i.highlight) : report.items;
+  const moreItems = hasSelection ? report.items.filter(i => !i.highlight && i.verification !== 'unbelegt') : [];
+  const unprovenItems = hasSelection ? report.items.filter(i => !i.highlight && i.verification === 'unbelegt') : [];
+
+  const renderItem = (item: ReportItem, idx: number) => (
+                  <article 
+                    key={`${item.sourceUrl}-${idx}`} 
+                    className="relative group border-t-2 border-zinc-900 pt-10 mt-10 first:border-t-0 first:pt-0 first:mt-0"
+                    onMouseUp={(e) => handleArticleMouseUp(e, item)}
+                  >
+                    <div className="flex flex-col md:flex-row gap-8">
+                      {/* Meta sidebar */}
+                      <div className="md:w-1/4 flex-shrink-0">
+                        <div className="text-xs font-bold text-zinc-900 uppercase tracking-widest mb-3 border-b-2 border-zinc-900 pb-2 inline-block">
+                          {item.expertName}
+                        </div>
+                        <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-4 flex flex-col gap-2">
+                          <span>{formatItemDate(item.date)}</span>
+                          {attributionLabel(item.attribution) && <span className="text-zinc-400">{attributionLabel(item.attribution)}</span>}
+                          <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900 flex items-center gap-1.5 transition-colors">
+                            {getSourceIcon(item.sourceType)}
+                            {item.sourceName || "Quelle"}
+                          </a>
+                          <div className="mt-2 flex flex-col items-start gap-1.5">
+                            <VerificationBadge level={item.verification} />
+                            <ValidationBadge status={item.linkStatus} />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="md:w-3/4">
+                        <h3 className="text-3xl md:text-4xl font-black text-zinc-900 mb-4 editorial-headline leading-tight tracking-tight">
+                          <a href={item.sourceUrl || '#'} target="_blank" rel="noopener noreferrer" className="hover:text-zinc-600 transition-colors">
+                            {item.headline}
+                          </a>
+                        </h3>
+                        <div className="editorial-text text-xl leading-relaxed text-zinc-800">
+                          <p>{item.summary}</p>
+                        </div>
+                        {item.groundedSources && item.groundedSources.length > 0 && (
+                          <div className="mt-4 text-xs text-zinc-500">
+                            <span className="font-bold uppercase tracking-widest text-[10px] text-zinc-700">Treffer der Websuche: </span>
+                            {item.groundedSources.map((source, sourceIdx) => (
+                              <React.Fragment key={source.uri}>
+                                {sourceIdx > 0 && ', '}
+                                <a href={source.uri} target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-900">{source.title}</a>
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+  );
+
   return (
     <div className="bg-white border border-zinc-200 overflow-hidden">
       {/* Hidden Audio Element */}
@@ -442,58 +503,41 @@ export const Newsletter: React.FC<NewsletterProps> = ({ report, onSaveHighlight 
           <div className="space-y-16">
             {/* Main News Items */}
             <section>
+              {hasSelection && (
+                <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-10">Das Wichtigste · {topItems.length} von {report.items.length} Einträgen</h2>
+              )}
               <div className="space-y-12">
-                {report.items.map((item, idx) => (
-                  <article 
-                    key={idx} 
-                    className="relative group border-t-2 border-zinc-900 pt-10 mt-10 first:border-t-0 first:pt-0 first:mt-0"
-                    onMouseUp={(e) => handleArticleMouseUp(e, item)}
+                {topItems.map(renderItem)}
+              </div>
+
+              {moreItems.length > 0 && (
+                <div className="mt-16">
+                  <button
+                    onClick={() => setShowMore(v => !v)}
+                    className="w-full flex items-center justify-between gap-4 border-2 border-zinc-900 px-5 py-4 text-left hover:bg-zinc-50 transition-colors"
+                    aria-expanded={showMore}
                   >
-                    <div className="flex flex-col md:flex-row gap-8">
-                      {/* Meta sidebar */}
-                      <div className="md:w-1/4 flex-shrink-0">
-                        <div className="text-xs font-bold text-zinc-900 uppercase tracking-widest mb-3 border-b-2 border-zinc-900 pb-2 inline-block">
-                          {item.expertName}
-                        </div>
-                        <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-4 flex flex-col gap-2">
-                          <span>{formatItemDate(item.date)}</span>
-                          {attributionLabel(item.attribution) && <span className="text-zinc-400">{attributionLabel(item.attribution)}</span>}
-                          <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900 flex items-center gap-1.5 transition-colors">
-                            {getSourceIcon(item.sourceType)}
-                            {item.sourceName || "Quelle"}
-                          </a>
-                          <div className="mt-2 flex flex-col items-start gap-1.5">
-                            <VerificationBadge level={item.verification} />
-                            <ValidationBadge status={item.linkStatus} />
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Content */}
-                      <div className="md:w-3/4">
-                        <h3 className="text-3xl md:text-4xl font-black text-zinc-900 mb-4 editorial-headline leading-tight tracking-tight">
-                          <a href={item.sourceUrl || '#'} target="_blank" rel="noopener noreferrer" className="hover:text-zinc-600 transition-colors">
-                            {item.headline}
-                          </a>
-                        </h3>
-                        <div className="editorial-text text-xl leading-relaxed text-zinc-800">
-                          <p>{item.summary}</p>
-                        </div>
-                        {item.groundedSources && item.groundedSources.length > 0 && (
-                          <div className="mt-4 text-xs text-zinc-500">
-                            <span className="font-bold uppercase tracking-widest text-[10px] text-zinc-700">Treffer der Websuche: </span>
-                            {item.groundedSources.map((source, sourceIdx) => (
-                              <React.Fragment key={source.uri}>
-                                {sourceIdx > 0 && ', '}
-                                <a href={source.uri} target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-900">{source.title}</a>
-                              </React.Fragment>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                ))}
+                    <span className="text-xs font-bold uppercase tracking-widest text-zinc-900">Weitere Einträge ({moreItems.length})</span>
+                    <span className="text-xs text-zinc-500">{showMore ? 'Einklappen' : 'Anzeigen'}</span>
+                  </button>
+                  {showMore && <div className="space-y-12 mt-12">{moreItems.map(renderItem)}</div>}
+                </div>
+              )}
+
+              {unprovenItems.length > 0 && (
+                <div className="mt-6">
+                  <button
+                    onClick={() => setShowUnproven(v => !v)}
+                    className="w-full flex items-center justify-between gap-4 border border-red-200 bg-red-50 px-5 py-4 text-left hover:bg-red-100 transition-colors"
+                    aria-expanded={showUnproven}
+                  >
+                    <span className="text-xs font-bold uppercase tracking-widest text-red-700">Unbelegt – nicht ungeprüft verwenden ({unprovenItems.length})</span>
+                    <span className="text-xs text-red-700">{showUnproven ? 'Einklappen' : 'Anzeigen'}</span>
+                  </button>
+                  {showUnproven && <div className="space-y-12 mt-12">{unprovenItems.map(renderItem)}</div>}
+                </div>
+              )}
+              <div>
               </div>
             </section>
 

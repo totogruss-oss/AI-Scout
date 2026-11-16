@@ -18,7 +18,7 @@ Der Bericht entsteht in drei Schritten:
 
 1. **Suche in kleinen Gruppen.** Die aktiven Personen werden nach Kategorie in Gruppen von höchstens vier aufgeteilt und einzeln gesucht, damit niemand untergeht. Zeitraum: die letzten 14 Tage.
 2. **Prüfung jedes Fundes.** Einträge ohne sicheres Datum oder außerhalb des Zeitraums werden aussortiert. Jeder verbleibende Eintrag wird mit den Treffern abgeglichen, die die Google-Suche tatsächlich geliefert hat.
-3. **Einordnung.** Überschrift, Einleitung und Impulse entstehen ohne weitere Suche, nur aus den geprüften Funden.
+3. **Einordnung und Auswahl.** Überschrift, Einleitung und Impulse entstehen ohne weitere Suche, nur aus den Funden, die die Suche stützt. Dabei werden höchstens zehn Einträge als „Das Wichtigste“ ausgewählt (höchstens zwei pro Person). Nur diese stehen aufgeklappt im Bericht; weitere und unbelegte Einträge sind eingeklappt und mit einem Klick erreichbar.
 
 | Kennzeichnung | Bedeutung |
 |---|---|
