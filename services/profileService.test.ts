@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Expert } from '../types';
-import { LookupUnavailableError, fetchOpenDataProfile, needsEnrichment } from './profileService';
+import { LookupUnavailableError, applyOpenDataProfile, fetchOpenDataProfile, githubAvatar, needsEnrichment } from './profileService';
 
 const expert = (extra: Partial<Expert> = {}): Expert =>
   ({ id: '1', name: 'Ada Beispiel', role: 'Forscherin', topics: [], active: true, ...extra });
@@ -90,5 +90,28 @@ describe('needsEnrichment', () => {
   it('versucht es bei fehlendem Bild nach einer Woche erneut, aber nicht früher', () => {
     expect(needsEnrichment(expert({ enrichedAt: daysAgo(8) }), now)).toBe(true);
     expect(needsEnrichment(expert({ enrichedAt: daysAgo(2) }), now)).toBe(false);
+  });
+});
+
+describe('GitHub-Profilbild als Rückfall', () => {
+  const github = { type: 'github' as const, url: 'https://github.com/ada-beispiel', origin: 'kuratiert' as const };
+
+  it('leitet die Bildadresse nur aus einer sauberen Profil-Adresse ab', () => {
+    expect(githubAvatar([github])?.url).toBe('https://github.com/ada-beispiel.png?size=400');
+    expect(githubAvatar([{ ...github, url: 'https://github.com/ada-beispiel/projekt' }])).toBeNull();
+    expect(githubAvatar([{ ...github, type: 'website' }])).toBeNull();
+    expect(githubAvatar([])).toBeNull();
+    // Ungeprüfte KI-Vorschläge zählen nicht.
+    expect(githubAvatar([{ ...github, origin: 'ki' }])).toBeNull();
+  });
+  it('greift, wenn Wikipedia und Wikidata kein Bild liefern', () => {
+    const result = applyOpenDataProfile(expert({ links: [github] }), { found: false, links: [] });
+    expect(result).toMatchObject({ imageUrl: 'https://github.com/ada-beispiel.png?size=400', imageCredit: 'GitHub-Profilbild von ada-beispiel', imageOrigin: 'kuratiert' });
+  });
+  it('überschreibt weder ein Wikimedia-Bild noch ein selbst eingetragenes', () => {
+    const fromWiki = applyOpenDataProfile(expert({ links: [github] }), { found: true, links: [], imageUrl: 'https://commons.example/a.jpg', imageOrigin: 'wikidata', imageCredit: 'Wikimedia Commons' });
+    expect(fromWiki.imageUrl).toBe('https://commons.example/a.jpg');
+    const own = applyOpenDataProfile(expert({ links: [github], imageUrl: 'https://example.org/eigen.jpg', manualOverrides: { imageUrl: true } }), { found: false, links: [] });
+    expect(own.imageUrl).toBe('https://example.org/eigen.jpg');
   });
 });

@@ -369,13 +369,35 @@ export const fetchOpenDataProfile = async (expert: Expert): Promise<OpenDataProf
  * Übernimmt Open-Data-Ergebnisse in ein Expertenprofil, ohne manuell
  * gepflegte Felder zu überschreiben.
  */
+/**
+ * Profilbild aus einem verknüpften GitHub-Konto – das Bild, das die Person dort
+ * selbst für sich gewählt hat. Dient nur als Rückfall, wenn Wikipedia und
+ * Wikimedia Commons kein Bild haben.
+ */
+export const githubAvatar = (links: ExpertLink[] = []): { url: string; credit: string; origin: DataOrigin } | null => {
+  for (const link of links) {
+    // Von der KI vorgeschlagene Links sind ungeprüft – daraus kein Gesicht ableiten.
+    if (link.type !== 'github' || link.origin === 'ki') continue;
+    const login = link.url.match(/^https?:\/\/(?:www\.)?github\.com\/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\/?$/)?.[1];
+    if (login) return { url: `https://github.com/${login}.png?size=400`, credit: `GitHub-Profilbild von ${login}`, origin: link.origin };
+  }
+  return null;
+};
+
+/** Ergänzt das GitHub-Profilbild, wenn sonst kein Bild vorhanden ist. */
+const withFallbackImage = (expert: Expert): Expert => {
+  if (expert.imageUrl || expert.manualOverrides?.imageUrl) return expert;
+  const avatar = githubAvatar(expert.links);
+  return avatar ? { ...expert, imageUrl: avatar.url, imageCredit: avatar.credit, imageOrigin: avatar.origin } : expert;
+};
+
 export const applyOpenDataProfile = (expert: Expert, data: OpenDataProfile): Expert => {
-  if (!data.found) return { ...expert, enrichedAt: new Date().toISOString() };
+  if (!data.found) return withFallbackImage({ ...expert, enrichedAt: new Date().toISOString() });
 
   const keepImage = expert.manualOverrides?.imageUrl && expert.imageUrl;
   const keepLinks = expert.manualOverrides?.links;
 
-  return {
+  return withFallbackImage({
     ...expert,
     wikidataId: data.wikidataId || expert.wikidataId,
     wikipediaTitle: data.wikipediaTitle || expert.wikipediaTitle,
@@ -388,7 +410,7 @@ export const applyOpenDataProfile = (expert: Expert, data: OpenDataProfile): Exp
     imageCredit: keepImage ? expert.imageCredit : (data.imageUrl ? data.imageCredit : expert.imageCredit),
     links: keepLinks ? mergeLinks(expert.links, []) : mergeLinks(expert.links, data.links),
     enrichedAt: new Date().toISOString(),
-  };
+  });
 };
 
 const RETRY_WITHOUT_IMAGE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
